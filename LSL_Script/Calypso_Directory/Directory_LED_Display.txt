@@ -1,0 +1,219 @@
+/*
+Script description:
+    - This script main function is to control prim texture, toggle texture from color to transparent to 
+    display the desire number result. Each number consist of 7 prims and by toggle texture on and off we can created LED number display.
+    
+Script Author: Daniel Dang
+*/
+//---------------------------------------------------------------Variables------------------------------------------------------------
+//Listen channel
+integer records_channel = 600;
+//listen handle
+integer listen_test;
+
+//prim link list 0-9 (all child prim associated with first number digit)
+integer top_center;                     //This section is the prims that involve in displaying
+integer center;                         //the LED number. When ever the link number changes
+integer bot_center;                     //this section is the only area need to be change in order
+integer top_right;                      //for the script to function, no further change needed.
+integer top_left;
+integer bot_right;
+integer bot_left;
+
+//prim link list 10-90 (all child prim associated with second number digit)
+integer top10_center;
+integer center10;
+integer bot10_center;
+integer top10_right;
+integer top10_left;
+integer bot10_right;
+integer bot10_left;
+
+//color vector
+vector Blue = <0.000, 0.455, 0.851>;
+vector Navy = <0.000, 0.122, 0.247>;
+vector Lime = <0.004, 1.000, 0.439>;
+vector Green = <0.180, 0.800, 0.251>;
+vector DarkGreen = <0, 0.5, 0>;
+vector Red = <1.000, 0.255, 0.212>;
+vector LightYellow = <1, 1, 0.5>;
+vector Yellow = <0.5, 0.5, 0>;
+vector Black = <0,0,0>;
+
+//These list contain properties of texture. Propeties of texture come in list. 
+//construct these list outside the function will help in term of script management and help 
+//with amend to chagnes in the future.
+
+//list control
+list active = [PRIM_TEXTURE, ALL_SIDES, TEXTURE_BLANK, <0.0, 0.0, 0.0>, <0.0, 0.0, 0.0>, 0.0];              //This list will toggle prim texture on
+list fullbright = [PRIM_FULLBRIGHT, ALL_SIDES, TRUE];                                                       //This list will make the prim full bright
+list color = [PRIM_COLOR, ALL_SIDES, <1, 0, 0>, 1.0];                                                       //This list will change color of prim
+list non_active = [PRIM_TEXTURE, ALL_SIDES, TEXTURE_TRANSPARENT, <0.0, 0.0, 0.0>, <0.0, 0.0, 0.0>, 0.0];    //This list toggle the prim texture off
+
+//------------------------------------------------------FUNCTIONS LSIT----------------------------------------------------------------
+//Active texture control functions (this function control the properties of the texture by sending in the premade list above)
+Active_texture (integer Link)
+{
+    llSetLinkPrimitiveParamsFast(Link, active);         //set texture when active
+    llSetLinkPrimitiveParamsFast(Link, fullbright);     //set fullbright mode
+    llSetLinkPrimitiveParamsFast(Link, color);          //set color texture
+}
+
+//Inactive texture control functions (this function contorl the properties of the texture by sending in the premade list above, in this case
+//the list send in will made the texture go transparent)
+Non_active_texture(integer Link)
+{
+    llSetLinkPrimitiveParamsFast(Link, non_active);   
+}
+
+//Similair to LED light in circuit board. one number digit have 7 LED. Depending on certain number, the child prim will toggle on and off
+//to show the correct number pattern.
+
+//number control functions (this function control the prim that is active during certain number. When certain number was send into the function, only
+//certain prim have texture and other will be transparent.)
+ZeroToNine (integer display_number)
+{
+    if ((display_number >= 0 && display_number <= 4) || (display_number >= 7 && display_number <= 9))
+        Active_texture(top_right);
+    
+    if ((display_number >= 0 && display_number <= 1) || (display_number >= 3 && display_number <= 9))
+        Active_texture(bot_right);
+        
+    if ((display_number == 0) || (display_number >= 2 && display_number <= 3) || (display_number >= 5 && display_number <= 6)
+        || (display_number >= 8 && display_number <= 9))
+        Active_texture(bot_center);
+        
+    if ((display_number == 0) || (display_number == 2) || (display_number == 6) || (display_number == 8))
+        Active_texture(bot_left);
+        
+    if ((display_number >= 2 && display_number <= 6) || (display_number >= 8 && display_number <= 9))
+        Active_texture(center);
+        
+    if ((display_number == 0) || (display_number >= 4 && display_number <= 6) || (display_number >= 8 && display_number <= 9))
+        Active_texture(top_left);
+        
+    if ((display_number == 0) || (display_number >= 2 && display_number <= 3) || (display_number >= 5 && display_number <= 9))
+        Active_texture(top_center);
+        
+    //Deactive the edges that irrelevant to function call (child prim toggle off to show number pattern)
+    if ((display_number >= 5 && display_number <= 6))
+        Non_active_texture(top_right);
+        
+    if (display_number == 2)
+        Non_active_texture(bot_right);
+        
+    if ((display_number == 1) || (display_number == 4) || (display_number == 7))
+        Non_active_texture(bot_center);
+        
+    if ((display_number == 1) || (display_number >= 3 && display_number <= 5) || (display_number == 7) || (display_number == 9))
+        Non_active_texture(bot_left);
+        
+    if ((display_number >= 0 && display_number <= 1) || (display_number == 7))
+        Non_active_texture(center);
+    
+    if ((display_number >= 1 && display_number <= 3) || (display_number == 7))
+        Non_active_texture(top_left);
+        
+    if ((display_number == 1) || (display_number == 4))
+        Non_active_texture(top_center);
+}
+
+//This function having the same functionality as the function above, however this function conrol the 2nd set of prims for 2nd LED number.
+TenToNinetyNine(integer display_number)
+{
+   if ((display_number >= 0 && display_number <= 4) || (display_number >= 7 && display_number <= 9))
+        Active_texture(top10_right);
+    
+    if ((display_number >= 0 && display_number <= 1) || (display_number >= 3 && display_number <= 9))
+        Active_texture(bot10_right);
+        
+    if ((display_number == 0) || (display_number >= 2 && display_number <= 3) || (display_number >= 5 && display_number <= 6)
+        || (display_number >= 8 && display_number <= 9))
+        Active_texture(bot10_center);
+        
+    if ((display_number == 0) || (display_number == 2) || (display_number == 6) || (display_number == 8))
+        Active_texture(bot10_left);
+        
+    if ((display_number >= 2 && display_number <= 6) || (display_number >= 8 && display_number <= 9))
+        Active_texture(center10);
+        
+    if ((display_number == 0) || (display_number >= 4 && display_number <= 6) || (display_number >= 8 && display_number <= 9))
+        Active_texture(top10_left);
+        
+    if ((display_number == 0) || (display_number >= 2 && display_number <= 3) || (display_number >= 5 && display_number <= 9))
+        Active_texture(top10_center);
+        
+    //Deactive the edges that irrelevant to function call
+    if ((display_number >= 5 && display_number <= 6))
+        Non_active_texture(top10_right);
+        
+    if (display_number == 2)
+        Non_active_texture(bot10_right);
+        
+    if ((display_number == 1) || (display_number == 4) || (display_number == 7))
+        Non_active_texture(bot10_center);
+        
+    if ((display_number == 1) || (display_number >= 3 && display_number <= 5) || (display_number == 7) || (display_number == 9))
+        Non_active_texture(bot10_left);
+        
+    if ((display_number >= 0 && display_number <= 1) || (display_number == 7))
+        Non_active_texture(center10);
+    
+    if ((display_number >= 1 && display_number <= 3) || (display_number == 7))
+        Non_active_texture(top10_left);
+        
+    if ((display_number == 1) || (display_number == 4))
+        Non_active_texture(top10_center); 
+}
+
+//---------------------------------------------------------------Main Program---------------------------------------------------------------
+
+default
+{
+    state_entry()
+    {
+        listen_test = llListen(records_channel, "", NULL_KEY, "");           //Active listen
+        
+        integer count = 0;
+        for (count; count < llGetNumberOfPrims(); count++)
+        {
+            string linkName = llGetLinkName(count);
+            //first digit
+            if     (linkName == "topcenter")    top_center = count;                 
+            else if(linkName == "center")       center = count;                         //The reason for this for loop is to search everyprim within 
+            else if(linkName == "botcenter")    bot_center = count;                     //this object for a specific name and set the link number according
+            else if(linkName == "topright")     top_right = count;                      //to the name of the object, in this case LED light. 
+            else if(linkName == "topleft")      top_left = count;                       //Manually assign prim number to the variable is not an efficient
+            else if(linkName == "botright")     bot_right = count;                      //way to handle prim link number since future addition link action will
+            else if(linkName == "botleft")      bot_left = count;                       //disrupt the prim number and the prim number will change dynamically.
+                                                                                    
+            //second digit
+            else if(linkName == "top10center")  top10_center = count;
+            else if(linkName == "center10")     center10 = count;
+            else if(linkName == "bot10center")  bot10_center = count;
+            else if(linkName == "top10right")   top10_right = count;
+            else if(linkName == "top10left")    top10_left = count;
+            else if(linkName == "bot10right")   bot10_right = count;
+            else if(linkName == "bot10left")    bot10_left = count;
+        }
+    }
+    
+    listen (integer channel, string name, key id, string message)
+    {
+        llListenRemove(listen_test);                        //Remove any listen
+        integer value = (integer)message;                   //Type cast string number into integer
+        //llSay(0, "records: " + message);                  //Say number
+        if (value <= 9)                                     //If number is 0-9 execute
+        {
+            TenToNinetyNine(0);                             //Send 0 value to all 2nd number digit
+            ZeroToNine(value);                              //Send integer value to 1st number digit
+        }
+        else if (value >= 10 && value <= 99)                //If number is 10-99 execute
+        {
+            TenToNinetyNine(value / 10);                    //Get the hundred place
+            ZeroToNine(value % 10);                         //Get the ten place (remainder)
+        }
+        
+        llResetScript();                                    //Reset script
+    }
+} 

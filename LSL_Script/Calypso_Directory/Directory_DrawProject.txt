@@ -1,0 +1,56 @@
+/*
+Objective:
+    - This script objective is to draw project name on a face of the prim. The project name will be received via 
+    listen event from the List_Operator object. 
+
+Script Author: Daniel Dang
+*/
+//Listen channel
+integer List_Operation = 25648;                             //Channel to listen to list_operation object
+
+//Listen Control
+integer ListOperation_Listen;                               //Listen control for ListOperation object
+
+/*
+    This function will used the passed in parameter projectName to draw the name of the project on a face
+    of a prim.
+*/
+Draw_Project(string projectName)
+{
+    //Text control variable
+    integer FontSize = 40;
+    integer PenSize = 7;
+    string color = "Black";
+    
+    string commandList = ""; //store commands
+    
+    commandList = osSetFontSize(commandList, FontSize);         //set font size
+    commandList = osSetPenColor(commandList, color);            //set font color
+    commandList = osMovePen(commandList, 5, 60);                //Move pen to corner of box
+    commandList = osDrawText(commandList, projectName);         //Draw name
+    
+    osSetDynamicTextureData("", "vector", commandList, "width:256,height:256", 0);  //Draw texture
+}
+
+default
+{
+    state_entry() 
+    {
+        ListOperation_Listen = llListen(List_Operation, "", NULL_KEY, "");              //Activate listen
+    }
+    /*
+        Listen event will catch the message containing the project name via llSay funciton.
+        The message will be pass to the Draw_Project function where it will be draw on a face
+        of a prim.
+    */
+    listen (integer channel, string name, key id, string msg)
+    {
+        llListenRemove(ListOperation_Listen);                                           //Deactivate listen
+        //If the channel detected = List_Operation channel (we define this above)
+        if (channel == List_Operation)
+        { 
+            Draw_Project(msg);                                                          //Send name of project to the Draw_Project function.
+        }
+        llResetScript();                                                                //Reset script
+    }
+}

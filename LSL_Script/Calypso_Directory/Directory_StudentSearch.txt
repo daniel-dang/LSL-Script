@@ -1,0 +1,47 @@
+/*
+Objective:
+    - This script objective is to get the name of a person from the user input then pass that name to the List_Operation
+    object for processing. 
+    - This script will prompt the user a textbox where the user can type in the name of a person to be sent off to the 
+    List_Operation object.
+    
+Script Author: Daniel Dang
+*/
+//Text box message
+string commandTip = "Enter a student's name to procedd.";
+
+string students;                //Storage for students name
+            
+integer listen_handle;          //Listen control
+integer channel_local = 299;    //Local channel for text box
+integer channel_global = 301;   //channel talk to list_operation
+
+key User;                       //Storeage for the user key
+ 
+//Main state
+default
+{
+    //On touch execute textbox 
+    touch_start(integer num)
+    {
+        User = llDetectedKey(0);                                //Detect user key
+        listen_handle = llListen(channel_local, "", User, "");  //Activate Listen
+        llTextBox(User, commandTip, channel_local);             //Activate texbox 
+    }
+    /*
+        - The listen event will be used locally to this object only. The main goal of the listen event is to listen to
+        the return message sent by the textbox after the user have clicked the submit button. 
+        - The submit button will send a message similair to llSay but on a given channel, then the listen event will 
+        catch the message and save that message to a variable.
+    */
+    listen(integer channel, string name, key id, string msg)
+    {
+        llListenRemove(listen_handle);              //Deactivate listen
+        if (id != User) {llResetScript();}          //Reset script if the user is not the one that click on the text box
+        
+        students = msg;                             //Save student name
+        llSay(channel_global, students);            //Tell List_Operation object the student name
+        
+        llResetScript();                            //Reset script
+    }
+}

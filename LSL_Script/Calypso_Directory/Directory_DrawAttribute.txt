@@ -1,0 +1,92 @@
+/*
+Objective:
+    - This script's purpose is to draw all the attribute about a person's background onto a prim. 
+    These attribute value will be pass in via listen event from List_Operation object. 
+    - The Draw_Attribute function will draw every attribute on a face of a prim with a passed in 
+    list parameter from the main state.
+    
+Script Author: Daniel Dang
+*/
+//Listen channel
+integer List_Operation = 30251;                            //Channel to listen to list_operation object
+
+//Listen Control
+integer ListOperation_Listen;                               //Listen control for ListOperation object
+
+/*
+This function will draw attribute from the list parameter. 
+This function will draw each attribute with a lable and the attribute value, 
+and the function will move down the page in uniform pixels apart.
+*/
+Draw_Attribute(list attribute)
+{
+    //Text control variable
+    integer FontSize = 10;
+    integer PenSize = 7;
+    string color = "Black";
+    
+    string commandList = "";                               //store commands
+    
+    commandList = osSetFontSize(commandList, FontSize);    //set font size
+    commandList = osSetPenColor(commandList, color);       //set font color
+    commandList = osMovePen(commandList, 45, 0);           //Move pen to corner of box
+    commandList = osDrawText(commandList, "Gender: "        + llList2String(attribute, 0));     //Draw Attributes...
+    commandList = osMovePen(commandList, 45, 15);                                               //The list passed in through the function parameter
+    commandList = osDrawText(commandList, "Email: "         + llList2String(attribute, 1));     //based on the string that was passed in the listen event.
+    commandList = osMovePen(commandList, 45, 30);                                               //See main function for string format and list order.
+    commandList = osDrawText(commandList, "Country: "       + llList2String(attribute, 2));
+    commandList = osMovePen(commandList, 45, 45);
+    commandList = osDrawText(commandList, "State: "         + llList2String(attribute, 3));
+    commandList = osMovePen(commandList, 45, 60);
+    commandList = osDrawText(commandList, "School: "        + llList2String(attribute, 4));
+    commandList = osMovePen(commandList, 45, 75);
+    commandList = osDrawText(commandList, "Major: "         + llList2String(attribute, 5));
+    commandList = osMovePen(commandList, 45, 90);
+    commandList = osDrawText(commandList, "Position: "      + llList2String(attribute, 6));
+    commandList = osMovePen(commandList, 45, 105);
+    commandList = osDrawText(commandList, "Graduation: "    + llList2String(attribute, 7));
+    commandList = osMovePen(commandList, 45, 120);
+    commandList = osDrawText(commandList, "Join Year: "     + llList2String(attribute, 8));
+    commandList = osMovePen(commandList, 45, 135);
+    commandList = osDrawText(commandList, "Active: "        + llList2String(attribute, 9));
+    commandList = osMovePen(commandList, 45, 150);
+    commandList = osDrawText(commandList, "Weekly Hours: "  + llList2String(attribute, 10));
+    commandList = osMovePen(commandList, 45, 165);
+    commandList = osDrawText(commandList, "Onsite: "        + llList2String(attribute, 11));
+    commandList = osMovePen(commandList, 45, 180);
+    commandList = osDrawText(commandList, "Co-op: "         + llList2String(attribute, 12));
+    commandList = osMovePen(commandList, 45, 195);
+    commandList = osDrawText(commandList, "Staff: "         + llList2String(attribute, 13));
+    commandList = osMovePen(commandList, 45, 210);
+    commandList = osDrawText(commandList, "Start Date: "    + llList2String(attribute, 14));
+    commandList = osMovePen(commandList, 45, 225);
+    commandList = osDrawText(commandList, "End Date: "      + llList2String(attribute, 15));
+    
+    osSetDynamicTextureData("", "vector", commandList, "width:512,height:256", 0);              //Draw texture
+}
+
+//Main state
+default
+{
+    state_entry()
+    {
+        ListOperation_Listen = llListen(List_Operation, "", NULL_KEY, "");      //Activate listen
+    }
+    /*
+        This listen event will catch the string pass from the List_Operation object and will convert string into list.
+        The list will be used as a function argument to passed into the Draw_Attribute function. 
+    */
+    listen (integer channel, string name, key id, string msg)
+    {
+        llListenRemove(ListOperation_Listen);                       //Deactivate liten 
+        //If channel detected is = to List_Operation channel (we define this above)
+        if (channel == List_Operation)
+        {
+            //string format and list ordering
+            //"gender:email:country:state:school:major:position:graduation:joinyr:active:weeklyhr:onsite:coop:staff:startdate:enddate"
+            list attribute = llParseString2List(msg, ":", "");      //Convert string into list with the extraction of the separator. 
+            Draw_Attribute(attribute);                              //Pass the list into the Draw_Attribute function. 
+        }
+        llResetScript();                                            //Reset script
+    }
+}

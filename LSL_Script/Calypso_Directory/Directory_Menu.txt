@@ -1,0 +1,33 @@
+/*
+Script Description:
+    - The purpose of this script is to prompt the user dialog box to let them choose the filter that they want
+    to set for the List_Operation object. This script is main purpose is only to prompt of the dialog box because
+    some data type of the dialogbox function cannot be code in C# code. 
+    - After the dialogbox is open, the rest of the process will be taking place in another script within the same object.
+    And that script is List_Operation script.
+    
+Script Author: Daniel Dang
+*/
+//---------------------------MENU VARIABLES CONTROL-------------------------------
+//This string is the string that will show up at the top of the dialogbox
+string MenuDialog = "--MAIN MENU--\n" +
+                    "Select one of the filter options below:\n" +
+                    "For other option click keyword to search:";
+//This list is the list of buttons that the user can click on. 
+list MenuButton = ["PT&OS", "FT&RM", "KEYWORD",
+                   "PT", "PT&RM", "FT&OS", 
+                   "FT", "OS", "RM"];
+                   
+integer DialogChannel = 102305;     //Channel to communicate with dialogbox
+key User;                           //Storate for user's key
+
+//Main State
+default
+{   
+    //On touch, prompt dialog box
+    touch_start(integer num)
+    {
+        User = llDetectedKey(0);                                 //Get user key
+        llDialog(User,MenuDialog, MenuButton, DialogChannel);   //Start dialogbox
+    }
+}

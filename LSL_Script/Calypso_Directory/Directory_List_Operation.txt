@@ -1,0 +1,817 @@
+//c#
+/*
+Script Description:
+    - This script is the main and the most important script in the whole Directory prototype. This script manage 
+    menu selection, student search, HTTPRequest, data storage, key word search and sending data to other script to display the content.
+    
+    - This script is the main control unit of the Directory prototype. Through the script, the state entry acts as a start line of the 
+    script and from the state entry, other function call will be made, and also sometime in this script there will be function call from
+    the state entry, and from that function, there will be additional function call. 
+    
+    - HINT**: This script is the first script you should read and try to understand the architecture of the scipt. By understanding this script,
+    it makes debugging the functionality of the Directory prototype as well as debugging other script much easier.
+    
+    - IMPORTANT***: The "//c#" comment tag at the top of this script is not actually a comment line. 
+    The "//c#" line although look like a comment, but it actually a line of code that tell the compiler to compile the code in c# and not LSL. 
+    If you remove that line or move it else where other than the top of the script, the entire script will not work and will result in
+    a syntax error.
+    
+Script Author: Daniel Dang
+*/
+
+
+//----------------------------------------------DEFINE GLOBAL VARIABLE---------------------------------------------------
+//These string statement will appear once a textbox is activated.   
+string searchInstr = "Operation (Type in without quote)\n" +
+                    "\"PT\"   \"FT\"   \"OS\"   \"RM\"\n" +
+                    "\"PT&OS\"   \"PT&RM\"   \"FT&OS\"   \"FT&RM\"\n" + 
+                    "Or to search by keyword enter any specific keyword:";
+                    
+string SearchTip = "Enter an appropriate keyword to search:";
+/*
+    These are all the listening channel in/out of the script. If the message that you trying to
+    send is not getting to or through, check for correct channel number. (channel number can be 
+    change to a different number, however, they must be consistent and remember to change the 
+    listening channel for other script that connect to this script as well.
+*/
+LSL_Types.LSLInteger channel_local = 300;       //channel for local textbox in this script
+LSL_Types.LSLInteger entries_search = 301;      //channel for student search object
+LSL_Types.LSLInteger Record_counter = 600;      //channel for LED number generator object
+LSL_Types.LSLInteger Draw_Name = 253254;        //channel for display student name
+LSL_Types.LSLInteger Attribute = 30251;         //channel for display student attribute
+LSL_Types.LSLInteger Draw_Project = 25648;      //channel for display student project
+LSL_Types.LSLInteger Draw_Picture = 23568;      //channel for display pictures
+LSL_Types.LSLInteger Student_Skill = 253658;    //channel for skill & interest object
+LSL_Types.LSLInteger Refresh_channel = 921;     //channel for refresh button
+LSL_Types.LSLInteger DialogChannel = 102305;    //channel for dialogbox in this object, different script(Menu_Filter script)
+
+/*
+    These are the listen control variable. Currently in this script we do not do any llListenRemove because
+    how C# work is a little bit different. In C#, when the script reset, only LSL script reset and the list in C# will not. 
+    So for this reason we will leave the listen control active all the time. Turn script off if the script is not in use,
+    however, don't implement llListenRemove.
+*/
+LSL_Types.LSLInteger listen_local;              //listen controller for lltextbox
+LSL_Types.LSLInteger listen_dialog;             //listen controller for dialogbox
+LSL_Types.LSLInteger listen_searchEntries;      //listen controller for entires_search object
+LSL_Types.LSLInteger listen_refresh;            //listen controller for REFRESH object
+LSL_Types.LSLString User;                       //User key
+LSL_Types.LSLString StudentName;                //save student name from message received by entries_search object
+ 
+ //Define a C# list globally so that we can access it anywhere in this script. 
+ //This list will be use to store Student class instances.   
+System.Collections.Generic.List<Student> student_records = new List<Student>();
+    
+//----------------------------------------------------END OF VARIABLES-------------------------------------------------
+
+
+//-----------------------------------------------------STUDENT CLASS---------------------------------------------------
+//(In LSL, it is impossible to have structure or class, however, since we are coding in C#, you can do data structure as well as class object)
+public class Student
+{
+    //private variables (these are the variable to store student name and attributes that we'll get from SharePoint)
+    private string Last_name;
+    private string First_name;
+    private string gender;
+    private string _email;
+    private string country;
+    private string _state;
+    private string school;
+    private string major;
+    private string position;
+    private string graduation;
+    private string joinyr;
+    private string active;
+    private string weeklyhrs;
+    private string onsite;
+    private string coop;
+    private string staff;
+    private string startdate;
+    private string enddate;
+    private string project;
+    private string profilePicture;
+    
+    //structure properties (these methods are used to access the private variable).
+    public string LastName
+    {
+        get {return Last_name;}
+        set {this.Last_name = value;}
+    }
+    public string FirstName
+    {
+        get {return First_name;}
+        set {this.First_name = value;}
+    }
+    public string Gender
+    {
+        get {return gender;}
+        set {this.gender = value;}    
+    }
+    public string Email
+    {
+        get {return _email;} 
+        set {this._email = value;}   
+    }
+    public string Country
+    {
+        get {return country;}
+        set {this.country = value;}
+    }
+    public string State
+    {
+        get {return _state;}
+        set {this._state = value;}
+    }
+    public string School
+    {
+        get {return school;}
+        set {this.school = value;}
+    }
+    public string Major 
+    {
+        get {return major;}
+        set {this.major = value;}
+    }
+    public string Position
+    {
+        get {return position;}
+        set {this.position = value;}
+    }
+    public string Graduation
+    {
+        get {return graduation;}
+        set {this.graduation = value;}
+    }
+    public string JoinYr
+    {
+        get {return joinyr;}
+        set {this.joinyr = value;}
+    }
+    public string Active
+    {
+        get {return active;}
+        set {this.active = value;}
+    }
+    public string WeeklyHrs
+    {
+        get {return weeklyhrs;}
+        set {this.weeklyhrs = value;}
+    } 
+    public string Onsite
+    {
+        get {return onsite;}
+        set {this.onsite = value;}
+    }
+    public string Coop
+    {
+        get {return coop;}
+        set {this.coop = value;}
+    }
+    public string Staff
+    {
+        get {return staff;}
+        set {this.staff = value;}
+    }
+    public string Startdate
+    {
+        get {return startdate;}
+        set {this.startdate = value;}
+    }
+    public string Enddate
+    {
+        get {return enddate;}
+        set {this.enddate = value;}
+    }
+    public string Project
+    {
+        get {return project;}
+        set {this.project = value;}
+    }
+    public string ProfilePicture
+    {
+        get {return profilePicture;}
+        set {this.profilePicture = value;}   
+    }
+    
+    //class constructor (class constructor to put value in to the class private variable at the moment the class was created)
+    public Student (string Last_Name, string First_Name, string Gender, string Email,
+                    string Country, string State, string School, string Major, string Position,
+                    string Graduation, string JoinYr, string Active, string WeeklyHrs, string Onsite,
+                    string Coop, string Staff, string Startdate, string Enddate, string Project
+                    )
+    {
+        this.Last_name = Last_Name;
+        this.First_name = First_Name;
+        this.gender = Gender;
+        this._email = Email;
+        this.country = Country;
+        this._state = State;
+        this.school = School;
+        this.major = Major;
+        this.position = Position;
+        this.graduation = Graduation;
+        this.joinyr = JoinYr;
+        this.active = Active;
+        this.weeklyhrs = WeeklyHrs;
+        this.onsite = Onsite;
+        this.coop = Coop;
+        this.staff = Staff;
+        this.startdate = Startdate;
+        this.enddate = Enddate;
+        this.project = Project;
+    }
+}
+
+//---------------------------------------------------------MAIN PROGRAM-----------------------------------------------------
+//This is the same as LSL default state, however this is in C# syntax
+public void default_event_state_entry() 
+{
+    //SharePoint URL
+    string url = "URL";
+    
+    string responseFromServer = HTTPRequest(url, "GET", ""); //create and get response from HTTP Request with C#.
+    
+    //llInstantMessage(llDetectedKey(0), "responseFromServer: " + responseFromServer);
+    
+    //reformat the string to a JSON object with C#
+    System.Collections.Hashtable json = (System.Collections.Hashtable) osParseJSONNew(responseFromServer);  
+    json = (System.Collections.Hashtable) json["d"]; 
+    
+    // results is in an arraylist of json objects
+    System.Collections.ArrayList jsonArrayList = (System.Collections.ArrayList) json["results"];
+    
+    /*
+        This for loop will iterate once for every entries on SharePoint. Every iteration, the loop will create a new instance of
+        the class within the list and add all of the information existed from SharePoint to the class to store for later use.
+    */
+    for (int count = 0; count <jsonArrayList.Count; count++)
+    {  
+        //This line here access the array element on SharePoint to collect data for the student information.
+        System.Collections.Hashtable tempDir = (System.Collections.Hashtable) jsonArrayList[count];
+        
+        /*
+        storing information in correct variable
+        The name that appear on the right inside of this symbol, [], must be exact. If unsure, 
+        you can copy the URL provided above and search for the exact namming convention of SharePoint. 
+        Incorrect name value will result in no data collected and logical error may occur inside of the script.
+        */
+        string LastName = (string)tempDir["LastName"];
+        string FirstName = (string)tempDir["FirstName"];
+        string Gender = (string)tempDir["Gender"];
+        string Email = (string)tempDir["EMailAddress"];
+        string Country = (string)tempDir["Country"];
+        string State = (string)tempDir["StateProvince"];
+        string School = (string)tempDir["School"];
+        string Major = (string)tempDir["Major"];
+        string Position = (string)tempDir["Position"];
+        string Graduation = (string)tempDir["GraduationYear"];
+        string JoinYr = (string)tempDir["YearJoined"];
+        string Active = (string)tempDir["UserActive"];
+        string WeeklyHrs = (string)tempDir["WeeklyHours"];
+        string OnSite = (string)tempDir["OnSite"];
+        string Co_op = (string)tempDir["CoOp"];
+        string Staff = (string)tempDir["Staff"];
+        string StartDate = (string)tempDir["StartDate"];
+        string EndDate = (string)tempDir["EndDate"];
+        string Project = (string)tempDir["Project"];
+        
+        //Add all value to a new instance of the class inside of the list using constructor method inside of the class
+        student_records.Add(new Student(LastName, FirstName, Gender, Email, Country, State, School,
+                                                Major, Position, Graduation, JoinYr, Active, WeeklyHrs,
+                                                OnSite, Co_op, Staff, StartDate, EndDate, Project)); 
+    }
+    
+    /*
+        The profile pictures of interns and staff was created in a different page/site and we will use another HTTPRequest to
+        get the pictures. 
+        See GetProfilePicture() function at line 715
+    */
+    GetProfilePicture();
+    /*
+    
+    
+    //---------------------------------------Leave this for the HTTPRequest and check to see if data collect correctly ---------------------------
+    //Undo comment lines if you need to debug, otherwise leave them in comments mode.
+    llSay(0, "test list object");
+                                         
+    for (int count = 0; count < student_records.Count; count++)
+    {
+        llSay(0,
+            "first name " + student_records[count].FirstName +  " " + 
+            "last name " + student_records[count].LastName +  " " + 
+            "gender " + student_records[count].Gender +  " " + 
+            "email " + student_records[count].Email +  " " + 
+            "country " + student_records[count].Country +  " " + 
+            "state " + student_records[count].State +  " " + 
+            "school " + student_records[count].School +  " " + 
+            "major " + student_records[count].Major +  " " + 
+            "position " + student_records[count].Position +  " " + 
+            "graduation " + student_records[count].Graduation +  " " + 
+            "join year " + student_records[count].JoinYr +  " " + 
+            "active " + student_records[count].Active +  " " + 
+            "weekly hours " + student_records[count].WeeklyHrs +  " " + 
+            "onsite " + student_records[count].Onsite +  " " + 
+            "coop " + student_records[count].Coop +  " " + 
+            "staff " + student_records[count].Staff +  " " + 
+            "startdate " + student_records[count].Startdate +  " " + 
+            "enddate " + student_records[count].Enddate +  " " + 
+            "project " + student_records[count].Project
+            );
+    }   
+    */
+    //------------------------------------------------------------------------------------------------------------------------
+    
+    
+    //These lines below trigger listen for all channel that will be going inside of this script.
+    listen_searchEntries = llListen(entries_search, "", NULL_KEY, "");      //listen active (for student search object)
+    listen_dialog = llListen(DialogChannel, "", User, "");                  //dialog listener active
+    listen_local = llListen(channel_local, "", User, "");                   //textbox listener active
+    listen_refresh = llListen(Refresh_channel, "", User, "");               //refresh listener active
+}
+
+//HTTP Request in C#. NOT using llHTTPRequest().
+public string HTTPRequest(string url, string httpMethod, string body){
+    System.Net.HttpWebRequest request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create (url); //create HTTP Request
+    request.Accept = "application/json;odata=verbose"; //neccesity for getting JSON data from SharePoint
+    
+    //send OpenSim info for server logging
+    string ownerKey = llGetOwner();
+    request.Headers.Add("X-SecondLife-Owner-Key", ownerKey);
+    request.Headers.Add("X-SecondLife-Owner-Name", llKey2Name(ownerKey)); 
+    request.Headers.Add("X-SecondLife-Local-Position", (string)llGetPos());
+    request.Headers.Add("X-SecondLife-Region", llGetRegionName());
+    request.Headers.Add("X-SecondLife-Object-Name", llGetObjectName()); 
+    
+    System.Net.WebResponse response = request.GetResponse (); //execute HTTP Request
+    
+    //get the response and set in a string
+    System.IO.Stream dataStream = response.GetResponseStream ();
+    System.IO.StreamReader reader = new System.IO.StreamReader (dataStream);
+    string responseFromServer = reader.ReadToEnd ();
+    
+    reader.Close ();
+    response.Close ();
+    
+    return responseFromServer;
+}
+ 
+//touch_start(integer number)
+public void default_event_touch_start(LSL_Types.LSLInteger total_number) 
+{
+    User = (string)llDetectedKey(0);            //Detect user's key
+}                                               //HINT**: C# doesn't have key as a variable, so you have to convert key to string data type.
+
+/*
+    This listen event will listen to all channel and all message comming from other object's script.
+    After the channel match and/or other condition has meet, there will be a series of if/else statement to 
+    process the message being received. 
+*/
+public void default_event_listen (LSL_Types.LSLInteger channel, LSL_Types.LSLString name, LSL_Types.LSLString id, LSL_Types.LSLString msg)
+{
+    //---------------------------------------STUDENT NAME SEARCH-----------------------------------------------
+    
+    //if the channel and name by object match the student search object, then execute
+    if (channel == entries_search && name == "entries_search")
+    {
+        //llListenRemove(listen_searchEntries);         //Remove listen for Entries_search object) 
+        
+        string student_name = "";                       //Variable to store student name
+        StudentName = msg;                              //Save student name
+        LSL_Types.LSLInteger FoundStatus = 1;           //Set to true.
+        
+        /*
+            - This for loop will step through all list element and pull out the student first name and last name. 
+            If the first name and last name match when compare to the message received from the listen event,
+            then the name will then be saved and the script will let the user know that the student/staff
+            has been found.
+            - If the no name match with any of the list element, then an message will tell the user that there is no 
+            student found.
+        */
+        for (int count = 0; count < student_records.Count; count++)
+        {
+            if (StudentName == (student_records[count].FirstName + " " + student_records[count].LastName))  //Input validation  (full name compare)
+            {
+                llSay(0, "student found.");                                                                 //If input validation passed, then notify the user
+                student_name = student_records[count].FirstName + " " + student_records[count].LastName;    //Save name
+                FoundStatus = 1;                                                                            //Set FoundStatus to true or 1
+                break;                                                                                      //Break the loop
+            }
+            else if (StudentName == student_records[count].FirstName)                                       //Input validation  (first name compare)
+            {
+                llSay(0, "student found.");
+                student_name = student_records[count].FirstName + " " + student_records[count].LastName;
+                FoundStatus = 1;
+                break;
+            }
+            else if (StudentName == student_records[count].LastName)                                        //Input validation  (last name comapre)
+            {
+                llSay(0, "student found.");
+                student_name = student_records[count].FirstName + " " + student_records[count].LastName;
+                FoundStatus = 1;
+                break;
+            }
+            else 
+                FoundStatus = 0;                                                                          //If no matching found, set status to false or 0
+        }
+        if (FoundStatus == 0)                                                                           //If FoundStatus is 0, tell user no student were found
+            llSay(0, "Cannot find student, please check student name again!");
+        else                                                                                            //Otherwise send instant message to the user the name
+        {                                                                                               //of the student that had been found.
+            llInstantMessage(id, student_name);         //NOTE**: llInstantMessage will only send information to the avatar with the same id parameter.
+            DisplayInformation(student_name);           //Send student name to DisplayInformation() function. For more information on this
+        }                                               //function see line: 780
+        
+    }
+    //-----------------------------------------------------------------------------------------------------------
+
+    //--------------------------------------------FILTER DIALOGBOX MENU-------------------------------------------    
+    
+    //If channel detected = DialogChannel (see DialogChannel number above), and id = User id (we detect user key at line 360 in default function)
+    //then execute.
+    else if (channel == DialogChannel && id == User)
+    {   
+        if (msg == "PT")                                                    //If the message = PT, execute
+        {
+            string instantMsg = "";                                         //Define an empty string to store value for later
+            LSL_Types.LSLInteger Flag = 1;                                  //Define a flag to true
+            LSL_Types.LSLInteger record_count = 0;                          //Define a record count to keep track of how many matching case the script has found
+            
+            /*
+                - This for loop will step through all the record in the list to see who is not working at 40 hours.
+                - When the loop find students that not working at 40 hours, it will add the student name to the string 
+                variable we define above.
+                
+                -Other if else statement within the FILTER DIALOGBOX MENU will behave similair to this format.
+            */
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].WeeklyHrs != "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no part-time students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "FT")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].WeeklyHrs == "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no full-time students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "OS")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "Yes")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no onsite students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "RM")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "No")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no remote students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "PT&OS" || msg == "OS&PT")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "Yes" && student_records[count].WeeklyHrs != "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no part-time and onsite students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "PT&RM" || msg == "RM&PT")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "No" && student_records[count].WeeklyHrs != "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no part-time and remote students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "FT&OS" || msg == "OS&FT")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "Yes" && student_records[count].WeeklyHrs == "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no full-time and onsite students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        
+        else if (msg == "FT&RM" || msg == "RM&FT")
+        {
+            string instantMsg = "";
+            LSL_Types.LSLInteger Flag = 1; //define a flag to true
+            LSL_Types.LSLInteger record_count = 0;
+            for (int count = 0; count < student_records.Count; count++)
+            {
+                if (student_records[count].Onsite == "No" && student_records[count].WeeklyHrs == "40")
+                { 
+                    instantMsg += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                    record_count++;
+                    Flag = 1;
+                }
+                else 
+                    Flag = 0;
+            }
+            if (Flag == 0 && instantMsg == "")
+                instantMsg = "There are no full-time and remote students.";
+            else 
+                llSay(600,(LSL_Types.LSLString)record_count);
+            
+            llInstantMessage(id, instantMsg);   //message user the records 
+        }
+        /*
+            If the user decided to go with the option keyword search, the script will active a dialog box and the script will move to the
+            KEYWORD SEARCH else if statement.
+        */
+        else if (msg == "KEYWORD")
+        {
+            TextBox(User, SearchTip, channel_local); 
+        }
+    }
+    //-----------------------------------------------------------------------------------------------------------------
+    
+    //-----------------------------------------------KEYWORD SEARCH----------------------------------------------------
+    
+    //If the channel = to the channel local (textbox channel) and id = user id, execute
+    else if(channel == channel_local && id == User)
+    {   
+        llSay(0, "TextBox Message: " + msg);    //Restate what the user have put inside of the textbox, for validation purposes on the user's end
+        string Records = "";                    //Define an empty string
+        LSL_Types.LSLInteger Count = 0;         //Define count varible at 0
+        LSL_Types.LSLInteger Flag = 1;          //Set flag to true
+        
+        /*
+            - This for loop will step through all the list element to find any matching from name to student attribute.
+            - A series of OR logic gate nested along with list object element, that mean any thing that matched will be pull out of the record save
+            inside the list.
+        */
+        for (int count = 0; count < student_records.Count; count++)
+        {
+            if (msg == student_records[count].FirstName ||
+                msg == student_records[count].LastName ||
+                msg == student_records[count].Gender ||
+                msg == student_records[count].Email ||
+                msg == student_records[count].Country ||
+                msg == student_records[count].State ||
+                msg == student_records[count].School ||
+                msg == student_records[count].Major ||
+                msg == student_records[count].Position ||
+                msg == student_records[count].Graduation ||
+                msg == student_records[count].JoinYr ||
+                msg == student_records[count].Active || 
+                msg == student_records[count].WeeklyHrs ||
+                msg == student_records[count].Onsite ||
+                msg == student_records[count].Coop ||
+                msg == student_records[count].Staff ||
+                msg == student_records[count].Startdate ||
+                msg == student_records[count].Enddate ||
+                msg == student_records[count].Project)
+            {
+                //Store student name inside of the string
+                Records += "{" + student_records[count].FirstName + " " + student_records[count].LastName + "}";
+                Count++;    //Set count to count for the number of matching found.
+                Flag = 1;   //If result found, set flag to 1
+            }
+            else            //If there's no result, set flag to 0
+                Flag = 0; 
+        }
+        if (Flag == 0 && Records == "")         //If the flag is 0 and record is an empty string, to ensure the for loop don't mistake save result by accident.
+            Records = "No results found!";      //Notify the user
+        else
+            llSay(Record_counter,(LSL_Types.LSLString)Count);   //Report the number of result found to LED number generator
+            
+        llInstantMessage(id, Records);                          //Message user the records  
+    } 
+    
+    else if (channel == Refresh_channel && name == "REFRESH" && msg == "refresh list operation")
+    {
+        llSay(0, "Reset Success!");     //notify the user that the list have successfully reset.
+        student_records.Clear();        //When we reset the script we need to clear the list
+        llResetScript();                //Now reset script
+    }
+}
+
+//This function main purpose is just to activate the TextBox
+private void TextBox(LSL_Types.LSLString KeyID, LSL_Types.LSLString InstrMsg, LSL_Types.LSLInteger Channel)
+{
+    llTextBox(User, InstrMsg, Channel);                //activate textbox when function call
+}
+
+/*
+    - This function will do HTTPRequest to a different SharePoint site and will pull picture from the SharePoint database to a 
+    PHP database, and then from that database, the database save the image and then send another URL back to this script to 
+    access the picture. 
+    - Currently, the database that we'll be using to download the picture and send the url back to this prim is Anthony Alves database.
+*/
+private void GetProfilePicture()
+{
+    //SharePoint URL for pictures
+    string url = "url";
+
+    string responseFromServer = HTTPRequest(url, "GET", ""); //create and get response from HTTP Request with C#.
+    
+    //llInstantMessage(llDetectedKey(0), "responseFromServer: " + responseFromServer);
+    
+    //reformat the string to a JSON object with C#
+    System.Collections.Hashtable json = (System.Collections.Hashtable) osParseJSONNew(responseFromServer);  
+    json = (System.Collections.Hashtable) json["d"]; 
+    
+    // results is in an arraylist of json objects
+    System.Collections.ArrayList jsonArrayList = (System.Collections.ArrayList) json["results"];
+    
+    for (int count = 0; count <jsonArrayList.Count; count++)
+    {
+        System.Collections.Hashtable tempDir = (System.Collections.Hashtable) jsonArrayList[count];
+        System.Collections.Hashtable GetPictures = (System.Collections.Hashtable) tempDir ["__metadata"];
+    
+         //storing information in correct variable
+        string profile_picture = (string)GetPictures["media_src"];
+        string apiURL = "url";
+        string ImageURL = HTTPRequest(apiURL, "GET", "");
+               ImageURL = ImageURL.Replace(" ", "%20");         //The %20 is replace for a space inside the url string.
+        
+        LSL_Types.LSLInteger start = llSubStringIndex(ImageURL,"uploads") + 8;  //This function will search for the first instance that match the keyword   
+                                                                                //we are searching for, and +8 is to offset the keyword we search for.
+        LSL_Types.LSLInteger end = llSubStringIndex(ImageURL, ".jpg") - 1;      //Similar concept as above
+
+        string PictureName = llGetSubString(ImageURL, start, end);              //Now get picture name with start index and end index we just got.
+               PictureName = PictureName.Replace("%20", " ");                   //Replace the %20 in the url line with space for comparation. 
+
+        
+        URLMatching(ImageURL, PictureName);                                     //Send the url and the picture name to another function to compare if the picture
+    }                                                                           //belong to the same person.
+} 
+
+/*
+    This function main purpose is to compare if the url that was given the same as the person we are accessing information from
+*/
+private void URLMatching (LSL_Types.LSLString ImageURL, LSL_Types.LSLString PictureName)
+{
+    //The for loop will step through the list to search for a matching name
+     for (int count = 0; count < student_records.Count; count++)
+        {
+            string StudentName = student_records[count].FirstName + " " + student_records[count].LastName;  //save student name
+
+            if (StudentName == PictureName)                         //Compare student name
+            {
+                student_records[count].ProfilePicture = ImageURL;   //If matches found, set the url to the class profilepicture member variable
+            }
+            else
+            {
+                //llSay(0,"Name doesn't match");                this code is here for debugg only
+            }
+        }   
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------
+
+/*
+    Display information function main purpose is to send specific information to other object's script so that other script 
+    can display information on to a face of a prim.
+*/
+private void DisplayInformation(LSL_Types.LSLString studentname)
+{
+    for (int count = 0; count < student_records.Count; count++)
+    {
+        if ((student_records[count].FirstName + " " + student_records[count].LastName) == studentname)
+        {
+            llSay(Draw_Name,                                                //Send name to Draw_Name script
+                    student_records[count].FirstName + ":" +
+                    student_records[count].LastName);
+                    
+            llSay(Draw_Project, student_records[count].Project);            //Send project name to Draw_Project script
+            
+            llSay(Draw_Picture, student_records[count].ProfilePicture);     //Send picture url to Draw_Picture script
+            
+            llSay(Student_Skill, studentname);                              //Send the name of the student the script currently accessing to
+                                                                            //the skill model prototype
+            llSay(Attribute,                                                //Send the attributes of the student to the Draw_Attribute script
+                    student_records[count].Gender + ":" +
+                    student_records[count].Email + ":" +
+                    student_records[count].Country + ":" +
+                    student_records[count].State + ":" +
+                    student_records[count].School + ":" +
+                    student_records[count].Major + ":" +
+                    student_records[count].Position + ":" +
+                    student_records[count].Graduation + ":" +
+                    student_records[count].JoinYr + ":" + 
+                    student_records[count].Active + ":" +
+                    student_records[count].WeeklyHrs + ":" +
+                    student_records[count].Onsite + ":" +
+                    student_records[count].Coop + ":" +
+                    student_records[count].Staff + ":" +
+                    student_records[count].Startdate + ":" +
+                    student_records[count].Enddate);
+        }
+    }   
+}
+ 

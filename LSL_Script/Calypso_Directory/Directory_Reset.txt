@@ -1,0 +1,23 @@
+/*
+Objective:
+    - The purpose of this script will only be used to reset the C# script for the List_Operation and the Skill Model.
+    The reason for this is that those scripts were written in C# and by simply used llResetScript, only the code that 
+    is in LSL code will get to reset. List in LSL will be reset to null however, C# list will not be reset. So if we used
+    llResetScript() function, the C# list will have the same information append to the end of the list.
+    - When the C# script received the message to reset, there is an API function that will clear the list in C#. More detail on this
+    API function look at the Skill Model script or List_Operation
+    
+Script Author: Daniel Dang
+*/
+integer refresh_channel = 921;           //channel for refresh button
+
+//Main State
+default
+{
+    //On touch, execute
+    touch_start(integer num)
+    {
+        //llSay(0, "testing");
+        llSay(refresh_channel, "refresh list operation");       //message and channel number need to be exact
+    }
+}

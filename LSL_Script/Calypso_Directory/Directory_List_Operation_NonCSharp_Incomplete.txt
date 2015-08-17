@@ -1,0 +1,320 @@
+/*
+Credit:
+    - The function HTTPRequest and Fetch_All_SharePoint in this script is in C#. Credit to Anthony Alves as he is the author who wrote these two scripts.
+    
+Program Description:
+
+*/
+//-----------------------------------------------VARIABLES-------------------------------------------------------------------------
+
+
+//TEXTBOX message
+string commandTip = "Type in a command to proceed\nCommand:pt,ft,os,rm.\nLogic:|(OR),&(AND).\nExample:pt|ft, pt|rm";
+string single_search = "Enter a student last name to search";  
+
+string studentsName;
+
+//channels
+integer channel_local = 300;        //channel for local textbox
+integer entries_search = 301;       //channel for student search
+integer Record_counter = 600;       //channel for record counter
+
+//listen controls
+integer listen_local;
+integer listen_searchEntries;
+
+key User;
+
+//URL to access SharePoint
+string url = "http://anthonyalves.science/SharePoint/api.php/TestDirectory";
+
+//------------------------------------------------------------------------------------------
+//----------------CURRENTLY NOT IMPLEMENTED----------------------------------------
+//LISTS OF STUDENT ATTRIBUTES (made up list, not base on real information)
+//This list contain duplicate information for algorithm testing purposes
+list onsite= ["Jacob", "onsite", "fulltime", "male", "02-06-1991",
+            "Stephanie", "onsite", "partime", "female", "03-05-1990",
+            "Steven", "onsite", "fulltime", "male", "02-21-2014"];
+            
+list remote = ["Mark", "remote", "fulltime", "male", "04-02-1989",
+            "Tim", "remote", "partime", "male", "05-20-1993",
+            "Susan", "remote", "partime", "female", "04-25-2012"];
+            
+list fulltime = ["Andre", "remote", "fulltime", "male", "05-28-1994",
+            "Emily", "onsite", "fulltime", "female", "02-26-1994",
+            "Steven", "onsite", "fulltime", "male", "02-21-2014"];
+            
+list parttime = ["Kimberly", "remote", "partime", "female", "02-01-2001",
+                "Jessica", "onsite", "partime", "female", "02-03-2051",
+                "Susan", "remote", "partime", "female", "04-25-2012"]; 
+
+//---------------------------------------------------FUNCTIONS----------------------------------------------------------------------
+
+//list control functions
+//List simplify, remove any duplicate entries of stride list
+list Remove_duplicate(list StudentList)
+{
+   integer start = 0;       //start index in stride list
+   integer end = 4;         //end index in stride list
+   integer stride_int = 1;  //interal of stride list stepping
+   
+   //created two new list to store temporarily list
+   list list_compare1;      
+   list list_compare2 = [];
+   
+   integer count = 0;
+   for (count; count <= (llGetListLength(StudentList) / 5 - 1); count++)
+   { 
+        //Innitialized first list with first stride list
+        list_compare1 = llList2ListStrided(StudentList, start, end, stride_int);
+        
+         //If list_compare2 is empty, transfer first set of value into it.
+        if (list_compare2 == [])
+            { list_compare2 += list_compare1;}
+        //If list_compare2 is not empty, compare list_compare1 to list_compare2, and if they are the same list. Temporarily list will not 
+        //store, however if they are not the same list, append temporarily list at the end of list_compare2.
+        else
+        {
+             integer duplicate_flag = llListFindList( list_compare2, list_compare1);    //compare step
+             if (duplicate_flag == -1)                  //if return value is -1, meaning compare fail, no matching found
+                { list_compare2 += list_compare1;}      //append temporarily list to end of list_compare2
+        }
+        
+        start += 5; //increment start interval
+        end += 5; //increment end interval
+    }
+    
+    return list_compare2;   //return list
+}
+
+//list search attribute
+list search_list (list ListIn, string attribute)
+{
+    integer start = 0;      //start index in stride list
+    integer end = 4;        //end index in stride list
+    integer stride = 1;     //interval of stride list stepping
+    
+    list search = [attribute];  //initialized attribute(keyword) in search list
+    list result = [];           //list to store result
+    list compare;               //compare list
+    
+    //Execute upon the attribute keyword is onsite or remote
+    if (attribute == "onsite" || attribute == "remote")
+    {
+        integer beg_offset = -1;    //onsite or remote being 2nd place in stride list so beginning of stride list is -1 from the keyword
+        integer end_offset = 3;     //end of stride list is 3 place from the keyword
+        integer count = 0;   
+        
+        //Loop run the number of time element in the list / 5 - 1. Since there are 5 element in each stride list inside of a list.
+        //and -1 for bound checking.        
+        for (count; count <= (llGetListLength(ListIn) / 5 - 1); count++)
+        {
+            integer RecordFound;    //flag for when keyword is found
+            
+            compare = llList2ListStrided(ListIn, start, end, stride);   //Take a stride list in original list and save it in a new list to compare.
+            RecordFound = llListFindList(compare, search);              //compare temporarily list to keyword list
+            
+            if (RecordFound != -1)  //if the result is not -1, meaning it found the matching keyword.
+            {
+                result += compare;  //store the stride list in the result list.
+            }
+            start += 5; //increment start by 5, next stride list
+            end += 5;   //increment end by 5, next stride list
+        }
+    }
+    return result;  //return result
+}
+
+//MERGE ALL LISTs
+list All_students()
+{
+    list Combine_roster = onsite + remote + fulltime + parttime; //merge all existing list into a new list
+    list Student_roster;
+    Student_roster = Remove_duplicate(Combine_roster);      //remove any duplicate entries
+    
+    return Student_roster;      //return combined list
+}
+
+//User Input valication (function to validate if user put in more than one student name, not yet implement)
+integer IsItOne (string names)
+{
+   return 0; 
+}
+
+//Find records (search for student in the lists)
+list one_student(string name)
+{
+    list search = [name];            //Search keyword
+    list allRecords = All_students();   //get all student in one list
+    integer RecordFound;
+    RecordFound = llListFindList(allRecords, search);   //find student
+
+    if (RecordFound == -1)  //if input doesn't match any name, return error message
+    { 
+        search = []; //set list to empty list
+        search = ["Student not found: check for name accuracy"];    //error status
+    }
+    else    //or if student is found, take out the stride list of the student profile information
+    {  
+        search = []; 
+        search = llList2ListStrided(allRecords, RecordFound, RecordFound + 5, 1);   
+    }
+    return search;
+}
+
+//Function for more keywords (this function can search for more than one student at a time, not yet implemented)
+list more_students(string keywords)
+{
+    list search = [keywords];
+    return search;
+}
+
+
+//------------------------------------MAIN PROGRAM -------------------------------------------------------
+public void default_event_state_entry()
+{
+    //listen_searchEntries = llListen(entries_search, "", NULL_KEY, "");      //listen active (for student search object)
+    
+    string responseFromServer = HTTPRequest(url, "GET", ""); //create and get response from HTTP Request with C#.
+    
+    //llInstantMessage(llDetectedKey(0), "responseFromServer: " + responseFromServer);
+    
+    //reformat the string to a JSON object with C#
+    System.Collections.Hashtable json = (System.Collections.Hashtable) osParseJSONNew(responseFromServer);  
+    json = (System.Collections.Hashtable) json["d"]; 
+    
+    // results is in an arraylist of json objects
+    System.Collections.ArrayList jsonArrayList = (System.Collections.ArrayList) json["results"]; 
+    
+    for ( int n = 0 ; n < jsonArrayList.Count ; n++ ) 
+    {  
+        System.Collections.Hashtable tempDir = (System.Collections.Hashtable) jsonArrayList[n];
+        string Last_Name = tempDir["LastName"];
+        string First_Name = tempDir["FirstName"];
+        llSay(0, myString); 
+    }
+}
+ 
+//Language type: C#
+//Http request function. Not using llHttpRequest().
+public string HTTPRequest(string url, string httpMethod, string body)
+{
+    System.Net.HttpWebRequest request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create (url); //create HTTP Request
+    request.Accept = "application/json;odata=verbose"; //neccesity for getting JSON data from SharePoint
+    
+    //send OpenSim info for server logging
+    string ownerKey = llGetOwner();
+    request.Headers.Add("X-SecondLife-Owner-Key", ownerKey);
+    request.Headers.Add("X-SecondLife-Owner-Name", llKey2Name(ownerKey)); 
+    request.Headers.Add("X-SecondLife-Local-Position", (string)llGetPos());
+    request.Headers.Add("X-SecondLife-Region", llGetRegionName());
+    request.Headers.Add("X-SecondLife-Object-Name", llGetObjectName()); 
+    
+    System.Net.WebResponse response = request.GetResponse (); //execute HTTP Request
+    
+    //get the response and set in a string
+    System.IO.Stream dataStream = response.GetResponseStream ();
+    System.IO.StreamReader reader = new System.IO.StreamReader (dataStream);
+    string responseFromServer = reader.ReadToEnd ();
+    
+    reader.Close ();
+    response.Close ();
+    
+    return responseFromServer;
+}
+
+//touch event in C#: on touch execute
+public void default_event_touch_start(LSL_Types.LSLInteger num)
+{
+    User = llDetectedKey(0);                                //detect key
+    listen_local = llListen(channel_local, "", User, "");    //listen active (for textbox)
+    llTextBox(User, commandTip, channel_local);              //active textbox
+}
+    
+//Listen process keyword. Matching keyword will execute if statement. If statement consist of list control and process for keyword enter.
+//This process enable user to perform quick search based on keyword, Boolean logic keyword.
+public void default_event_listen (LSL_Types.LSLInteger channel, LSL_Types.LSLString name, LSL_Types.LSLKey id, LSL_Types.LSLString msg)
+{
+    //Currently not in use
+    
+    if (id = User)
+    {
+        list list_choose = [];
+        if (msg == "pt") 
+        {
+            list_choose += parttime;
+        }
+        else if (msg == "ft") 
+        {
+            list_choose += fulltime;
+        }
+        else if (msg == "os") 
+        {
+            list_choose += onsite;
+        }
+        else if (msg == "rm") 
+        {
+            list_choose += remote;
+        }
+        else if (msg == "pt|ft" || msg == "ft|pt")
+        {
+            list_choose += All_students();
+        }
+        else if (msg == "pt|os" || msg == "os|pt")
+        {
+            list_choose = list_choose + parttime + onsite;
+            Remove_duplicate(list_choose);
+        }
+        else if (msg == "pt|rm" || msg == "rm|pt")
+        {
+            list_choose = list_choose + parttime + remote;
+            Remove_duplicate(list_choose);
+        }
+        else if (msg == "ft|os" || msg == "os|ft")
+        {
+            list_choose = list_choose + fulltime + onsite;
+            Remove_duplicate(list_choose);
+        }
+        else if (msg == "ft|rm" || msg == "rm|ft")
+        {
+            list_choose = list_choose + fulltime + remote;
+            Remove_duplicate(list_choose);
+        }
+        else if (msg == "pt&os" || msg == "os&pt")
+        {
+            list_choose += search_list(parttime, "onsite");
+        }
+        else if (msg == "pt&rm" || msg == "rm&pt")
+        {
+            list_choose += search_list(parttime, "remote");
+        }
+        else if (msg == "ft&os" || msg == "os&ft")
+        {
+            list_choose += search_list(fulltime, "onsite");
+        }
+        else if (msg == "ft&rm" || msg == "rm&ft")
+        {
+            list_choose += search_list(fulltime, "remote");
+        }
+        else {llSay(0, "Logic not define.");}   //if no if statement execute, logic not define, or not implemented
+    
+        integer records = llGetListLength(list_choose) / 5;
+        llSay(Record_counter, (string)records);                 //send the number of record found to LED number generator
+        llSay(0, llDumpList2String(list_choose, " | "));        //display record found as list
+    
+        llListenRemove(listen_local); // stop listening
+        
+    }
+         
+    else if (channel == entries_search && name == "entries_search")     //if the channel and name by object match the student search object, then execute
+    {
+        studentsName = msg;     //save student name
+        llSay(0, studentsName);//say student name
+        list Search_results = [];
+        Search_results += one_student(studentsName);    //perform student search
+        llSay(0, llDumpList2String(Search_results, " | "));     //display student search record in chat
+        llSay(800,llList2String(Search_results, 0));
+    }
+            
+    llResetScript();    //reset script.
+}
