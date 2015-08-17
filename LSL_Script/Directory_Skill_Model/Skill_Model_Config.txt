@@ -1,0 +1,309 @@
+/*
+Script Description:
+    - This script is the main script that will be used by the prototype to process all of the skill
+    number and set the building height and the building position within the prototype. This will will
+    get the information from the Skill Model List Operation script. 
+    - After this script got the information via listen event from the other script, it will figure out the 
+    current location and prim size and then set new location and prim height for all the prims.
+    
+Script Author: Daniel Dang
+*/
+
+//These are all of the variable that will be used to save the prim link number with
+//a loop so that we can use these link number to access each prim and set new 
+//height and position for all prims.
+//HINT**: Try to keep the name of the variable consistent with the building name, that way
+//it easier to debug and modify. Save time switching back and forth between script and prim object to get
+//prim name.
+integer CSharp;
+integer CPlusPlus;
+integer LSL;
+integer MATLAB;
+integer UnityGameEngine;
+integer Java;
+integer Python;
+integer Databases;
+integer DataMining;
+integer Networking;
+integer JavascriptWordpress;
+integer PHP;
+integer HTML;
+integer AndroidDevelopment;
+integer LinuxOS;
+integer WindowOS;
+integer ArtificialIntelligence;
+integer Three_DPrinting;
+integer CAD;
+integer GraphicDesign;
+integer Three_DModeling;
+integer GoogleGlass;
+integer OculusRift;
+integer RaspberryPi;
+integer EmotivHeadset;
+integer KinectSensor;
+integer NAORobot;
+integer DigitalSignalProcessing;
+integer MachineLearning;
+integer CircuitsBuilding;
+integer CircuitsDesign;
+
+//This variable is the variable to store the link number of the central tower.
+integer Skill_Central;
+
+//Global Variable to store Z default axis
+float Z_axis_default;
+
+/*
+    The purpose of this function is to figure out the current position and size of each prim and
+    set new height and position for each prim.
+*/
+SetPos_Height(integer prim, float skillval)
+{
+    if (skillval == 0)
+        skillval = .3;              //set default skill value that are 0 to .3 height so that the viewer can see the building
+    else 
+        skillval = skillval + .1;   //this will let the prim higher than the plane color coded so that viewer can see
+
+    list tempSize = llGetLinkPrimitiveParams (prim, [PRIM_SIZE]);                       //Get prim size
+    string tempSize_cast = (string)tempSize;                                            //Type cast list -> string
+    vector prim_size = (vector)tempSize_cast;                                           //Type cast string -> vector(prim size always in vector data type)
+    vector new_prim_height = <prim_size.x, prim_size.y, skillval>;                      //Define new vector for the prim height 
+    //llSay(0, "Prim size: " + (string)prim + " | " + tempSize_cast);                   //We can separate each axis by this syntax <variable name>.axis
+    //llSay(0, "New prim height: " + (string)prim + " | " + (string)new_prim_height);  
+    
+    //now set new height to prim
+    llSetLinkPrimitiveParams(prim,[PRIM_SIZE, new_prim_height]);
+    
+    
+    list tempPos = llGetLinkPrimitiveParams (prim,[PRIM_POS_LOCAL]);                        //Get prim position
+    string tempPos_cast = (string)tempPos;                                                  //Type cast list -> string
+    vector prim_pos = (vector)tempPos_cast;                                                 //Type cast string -> vector (prim position always in vector data type)
+    vector new_prim_Zpos_reset = <prim_pos.x, prim_pos.y, (Z_axis_default * 0.0)>;          //This vector will set the prim's location to half under the prototype bottom floor
+    vector new_prim_Zpos = <new_prim_Zpos_reset.x, new_prim_Zpos_reset.y, (skillval / 2)>;  //This vecctor will set the prim's location right on top of the prototype bottom floor
+    //llSay(0, "Prim position: " + (string)prim + " | " + tempPos_cast);                    //The reason for this is because LSL building always set locaiton of the prim in the
+    //llSay(0, "Prim new position: " + (string)prim + " | " + (string)new_prim_Zpos_reset); //center of the prim, and the lowest point of any prim is describe by this formula
+                                                                                            //Prim bottom z axis = prim center z axis - (prim height / 2). 
+    //now set new z position to prim
+   llSetLinkPrimitiveParams (prim, [PRIM_POS_LOCAL, new_prim_Zpos_reset]);                  //Set the center of the prim to be parallel to the prototype bottom floor
+   llSetLinkPrimitiveParams (prim, [PRIM_POS_LOCAL, new_prim_Zpos]);                        //Shift prim up
+}
+
+//-----------------------------------------------MAIN PROGRAM--------------------------------------------------------------
+default
+{
+    state_entry()
+    {
+        /*
+            The for loop will step through all of the link number to identify which building will go with which variable. 
+            As we have talked about this before in the LED number, as we link more object to the prim, the link number will change. 
+            The best way to identify correct prim number is to detect prim number through the name of each building, compare it and set
+            the prim number to the correct variable.
+        */
+        integer count = 0;
+        for (count; count <= llGetLinkNumber(); count++)
+        {
+            //llSay(0, (string)llGetLinkNumber());
+            //llSay(0, "count: " + (string)count + llGetLinkName(count)+ "\n");
+            if (llGetLinkName(count) == "Skill_Central")
+            {
+                Skill_Central = count;      //llSay(0, "Skill_Central: " + (string)Skill_Central);
+            }
+            else if (llGetLinkName(count) == "CSharp")
+            {
+                CSharp = count;     //llSay(0, "C#: " + (string)CSharp);
+            }
+            else if (llGetLinkName(count) == "CPlusPlus")
+            {
+                CPlusPlus = count;  //llSay(0, "C++: " + (string)CPlusPlus); 
+            }
+            else if (llGetLinkName(count) == "LSL")
+            {
+                LSL = count;        //llSay(0, "LSL: " + (string)LSL);
+            }
+            else if (llGetLinkName(count) == "MATLAB")
+            {
+                MATLAB = count;     //llSay(0, "MATLAB: " + (string)MATLAB);
+            }
+            else if (llGetLinkName(count) == "UnityGameEngine")
+            {
+                UnityGameEngine = count;        //llSay(0, "UnityGameEngine: " + (string)UnityGameEngine);
+            }
+            else if (llGetLinkName(count) == "Java")
+            {
+                Java = count;       //llSay(0, "Java: " + (string)Java);
+            }
+            else if (llGetLinkName(count) == "Python")
+            {
+                Python = count;     //llSay(0, "Python: " + (string)Python);
+            }
+            else if (llGetLinkName(count) == "Databases")
+            {
+                Databases = count;      //llSay(0, "Databases: " + (string)Databases);
+            }
+            else if (llGetLinkName(count) == "DataMining")
+            {
+                DataMining = count;     //llSay(0, "DataMining: " + (string)DataMining);
+            }
+            else if (llGetLinkName(count) == "Networking")
+            {
+                Networking = count;     //llSay(0, "Networking: " + (string)Networking);
+            }
+            else if (llGetLinkName(count) == "JavascriptWordpress")
+            {
+                JavascriptWordpress = count;        //llSay(0, "JavascriptWordpress: " + (string)JavascriptWordpress);
+            }
+            else if (llGetLinkName(count) == "PHP")
+            {
+                PHP = count;        //llSay(0, "PHP: " + (string)PHP);
+            }
+            else if (llGetLinkName(count) == "HTML")
+            {
+                HTML = count;       //llSay(0, "HTML: " + (string)HTML);
+            }
+            else if (llGetLinkName(count) == "AndroidDevelopment")
+            {
+                AndroidDevelopment = count;     //llSay(0, "AndroidDevelopment: " + (string)AndroidDevelopment);
+            }
+            else if (llGetLinkName(count) == "LinuxOS")
+            {
+               LinuxOS = count;     //llSay(0, "LinuxOS: " + (string)LinuxOS);
+            }
+            else if (llGetLinkName(count) == "WindowOS")
+            {
+                WindowOS = count;       //llSay(0, "WindowOS: " + (string)WindowOS);
+            }
+            else if (llGetLinkName(count) == "ArtificialIntelligence")
+            {
+                ArtificialIntelligence = count;     //llSay(0, "ArtificialIntelligence: " + (string)ArtificialIntelligence);
+            }
+            else if (llGetLinkName(count) == "Three_DPrinting") 
+            {
+                Three_DPrinting = count;        //llSay(0, "Three_DPrinting: " + (string)Three_DPrinting);
+            }
+            else if (llGetLinkName(count) == "CAD")
+            {
+                CAD = count;            //llSay(0, "CAD: " + (string)CAD);
+            }
+            else if (llGetLinkName(count) == "GraphicDesign")
+            {
+                GraphicDesign = count;      //llSay(0, "GraphicDesign: " + (string)GraphicDesign);
+            }
+            else if (llGetLinkName(count) == "Three_DModeling")
+            {
+                Three_DModeling = count;        //llSay(0, "Three_DModeling: " + (string)Three_DModeling);
+            }
+            else if (llGetLinkName(count) == "GoogleGlass")
+            {
+                GoogleGlass = count;        //llSay(0, "GoogleGlass: " + (string)GoogleGlass);
+            }
+            else if (llGetLinkName(count) == "OculusRift")
+            {
+                OculusRift = count;         //llSay(0, "OculusRift: " + (string)OculusRift);
+            }
+            else if (llGetLinkName(count) == "RaspberryPi")
+            {
+                RaspberryPi = count;        //llSay(0, "RaspberryPi: " + (string)RaspberryPi);
+            }
+            else if (llGetLinkName(count) == "EmotivHeadset")
+            {
+                EmotivHeadset = count;      //llSay(0, "EmotivHeadset: " + (string)EmotivHeadset);
+            }
+            else if (llGetLinkName(count) == "KinectSensor")
+            {
+                KinectSensor = count;       //llSay(0, "KinectSensor: " + (string)KinectSensor);
+            }
+            else if (llGetLinkName(count) == "NAORobot")
+            {
+                NAORobot = count;           //llSay(0, "NAORobot: " + (string)NAORobot);
+            }
+            else if (llGetLinkName(count) == "DigitalSignalProcessing")
+            {
+                DigitalSignalProcessing = count;        //llSay(0, "DigitalSignalProcessing: " + (string)DigitalSignalProcessing);
+            }
+            else if (llGetLinkName(count) == "MachineLearning")
+            {
+                MachineLearning = count;              //llSay(0, "Machinelearning: " + (string)MachineLearning); 
+            }
+            else if (llGetLinkName(count) == "CircuitsDesign")
+            {
+                CircuitsDesign = count;              //llSay(0, "CircuitsDesign: " + (string)CircuitsDesign);
+            }
+            else if (llGetLinkName(count) == "CircuitsBuilding")
+            {
+                CircuitsBuilding = count;              //llSay(0, "CircuitsBuilding: " + (string)CircuitsBuilding);
+            }
+        }
+    }
+    
+    //This link message will get message from other script within the same prototype to get the string of the skill values of the user
+    link_message(integer sender, integer num, string msg, key ID)
+    {
+        //If the link number = to the Skill_Central link number (define above)
+        if (sender == Skill_Central)
+        {
+            //llSay(0, "got it");
+            //llSay(0, msg);
+            list Skill = llParseString2List(msg, ":", "");
+            
+            list params = llGetPrimitiveParams([PRIM_POS_LOCAL]);
+            string params_cast = (string)params;
+            //llSay(0, params_cast);
+            vector position = (vector)params_cast;
+            Z_axis_default = position.z;
+            //llSay(0,"Z axis: " + (string)Z_axis_default);
+            
+            /*
+                This list format below is important to know and better to have interm of time efficiency. 
+                This format is the format that the order of the value was set inside of the list.
+                For example at element 0, the value is for C# and at element 30 the value is for artificial intelligence. 
+                If you trying to access the value for the skill Java, the list element you need to go to is 2 and so on.
+            */
+            //List format:
+            //0 = [C#]                      1 = [C++]                   2 = [Java]                  3 = [PHP]
+            //4 = [DigitalSignalProcessing] 5 = [RaspberryPi]           6 = [EmotivHeadset]         7 = [NAORobot]  
+            //8 = [KinectsSensor]           9 = [OculusRift]            10 = [GoogleGlass]          11 = [Networking]
+            //12 = [WindowOS]               13 = [LinuxOS]              14 = [AndroidDevelopment]   15 = [CircuitsDesign]
+            //16 = [CircuitsBuilding]       17 = [JavascriptWordpress]  18 = [HTML]                 19 = [Database]     
+            //20 = [GraphicDesign]          21 = [3D Printing]          22 = [CAD]                  23 = [3D MOdeling]         
+            //24 = [UnityGameEngine]        25 = [MATLAB]               26 = [Python]               27 = [LSL] 
+            //28 = [MachineLearning]        29 = [DataMining]           30 = [Artificial Intelligence]
+            
+            llSay(0, "Skill Map is now Adjusting...");                          //Letting user know that the skill model is adjusting
+            
+            SetPos_Height(CSharp,                   llList2Float(Skill,0));     //Call function SetPos_Height with function argument (prim link, float value)
+            SetPos_Height(CPlusPlus,                llList2Float(Skill,1));     //As the table above already setup, it is easier to go by the order of the 
+            SetPos_Height(Java,                     llList2Float(Skill,2));     //list and have function call respect to the order of the list.
+            SetPos_Height(PHP,                      llList2Float(Skill,3));
+            SetPos_Height(DigitalSignalProcessing,  llList2Float(Skill,4));
+            SetPos_Height(RaspberryPi,              llList2Float(Skill,5));
+            SetPos_Height(EmotivHeadset,            llList2Float(Skill,6));
+            SetPos_Height(NAORobot,                 llList2Float(Skill,7));
+            SetPos_Height(KinectSensor,             llList2Float(Skill,8));
+            SetPos_Height(OculusRift,               llList2Float(Skill,9));
+            SetPos_Height(GoogleGlass,              llList2Float(Skill,10));
+            SetPos_Height(Networking,               llList2Float(Skill,11));
+            SetPos_Height(WindowOS,                 llList2Float(Skill,12));
+            SetPos_Height(LinuxOS,                  llList2Float(Skill,13));
+            SetPos_Height(AndroidDevelopment,       llList2Float(Skill,14));
+            SetPos_Height(CircuitsDesign,           llList2Float(Skill,15));
+            SetPos_Height(CircuitsBuilding,         llList2Float(Skill,16));
+            SetPos_Height(JavascriptWordpress,      llList2Float(Skill,17));
+            SetPos_Height(HTML,                     llList2Float(Skill,18));
+            SetPos_Height(Databases,                llList2Float(Skill,19));
+            SetPos_Height(GraphicDesign,            llList2Float(Skill,20));
+            SetPos_Height(Three_DPrinting,          llList2Float(Skill,21));
+            SetPos_Height(CAD,                      llList2Float(Skill,22));
+            SetPos_Height(Three_DModeling,          llList2Float(Skill,23));
+            SetPos_Height(UnityGameEngine,          llList2Float(Skill,24));
+            SetPos_Height(MATLAB,                   llList2Float(Skill,25));
+            SetPos_Height(Python,                   llList2Float(Skill,26));
+            SetPos_Height(LSL,                      llList2Float(Skill,27));
+            SetPos_Height(MachineLearning,          llList2Float(Skill,28));
+            SetPos_Height(DataMining,               llList2Float(Skill,29));
+            SetPos_Height(ArtificialIntelligence,   llList2Float(Skill,30));
+            
+            llSay(0, "Skill Map Have Been Adjusted.");                          //Let user know that the skill model have been adjusted.
+            }
+        llResetScript();
+    }   
+} 

@@ -1,0 +1,220 @@
+//c#
+/*
+Script Descrition:
+    - The purpose of this script is to get the person's name from the Directory List Operation using the listen event. 
+    - After the script got the name, it will search for the name saved inside of the class and validate if it is the 
+    right person that the Directory prototype was accessing. 
+    - Then the script will pass all skill value to another script within the same object for further adjusting the prim
+    height and position
+    
+Script Author: Daniel Dang
+*/
+//--------------------------------------------GLOBAL VARIABLES--------------------------------------------------------
+
+//initialize the list globally
+System.Collections.Generic.List<StudentSkill> student_records = new List<StudentSkill>();
+
+//Channel from List_Operation
+LSL_Types.LSLInteger List_Operation = 253658;               //Channel to listen to from List_Operation object
+LSL_Types.LSLInteger Skill_Process = 51428;                 //channel to tell Skill_Process script the student's skill
+LSL_Types.LSLInteger Refresh_channel = 921;                 //channel for refresh button
+
+//Listen control List_Operaiton
+LSL_Types.LSLInteger ListOperation_Control;                 //listener control
+LSL_Types.LSLInteger listen_refresh;                        //listen control for refresh button
+
+LSL_Types.LSLInteger Skill_Central;                         //prim link for skill central prim
+//------------------------------------------------------------------------------------------------------------------------
+
+//Define StudentSkill class
+public class StudentSkill
+{
+    private string firstname;
+    private string lastname;
+    public int[] skill = new int[31];
+    
+    public string FirstName
+    {
+        get {return firstname;}
+        set {this.firstname = value;}
+    }
+    
+    public string LastName
+    {
+        get {return lastname;}
+        set {this.lastname = value;}   
+    }
+    
+    public int[] SkillArray
+    {
+        get {return skill;}
+        set {this.skill = value;}   
+    }
+    
+    public StudentSkill (string FirstName, string LastName)
+    {
+        this.firstname = FirstName;
+        this.lastname = LastName;   
+    }
+}
+
+//state_entry()
+public void default_event_state_entry() 
+{
+    //For loop will step through all prim to detect the prim with the name: Skill_Central
+    for (int count = 0; count <= llGetLinkNumber(); count++) 
+    {
+        //llSay(0, "Count: " + (LSL_Types.LSLString)count + " Name: " + llGetLinkName(count));
+        if (llGetLinkName(count) == "Skill_Central")
+        {
+            Skill_Central = count;
+            //llSay(0, "Skill_Central = " + (LSL_Types.LSLString)Skill_Central);   
+        }
+    }
+    
+    //URL to access skill data of the students
+    string url = "url";
+    string responseFromServer = HTTPRequest(url, "GET", ""); //create and get response from HTTP Request with C#.
+    
+    //llInstantMessage(llDetectedKey(0), "responseFromServer: " + responseFromServer);
+    
+    //reformat the string to a JSON object with C#
+    System.Collections.Hashtable json = (System.Collections.Hashtable) osParseJSONNew(responseFromServer);  
+    json = (System.Collections.Hashtable) json["d"]; 
+    
+    // results is in an arraylist of json objects
+    System.Collections.ArrayList jsonArrayList = (System.Collections.ArrayList) json["results"];
+    
+    /*
+        The for loop will step through each index from SharePoint and store data into an instance of a class within 
+        a list.
+    */
+    for ( int n = 0 ; n < jsonArrayList.Count ; n++ ) 
+    {  
+        System.Collections.Hashtable tempDir = (System.Collections.Hashtable) jsonArrayList[n];
+        
+        string FirstName = (string)tempDir["FirstName"];
+        string LastName = (string)tempDir["LastName"];
+        
+        student_records.Add(new StudentSkill(FirstName, LastName));                 //Add a student (create new instance of the class)
+        student_records[n].skill[0] = (int)tempDir["C"];                            //The name appear between the bracket, [], will have to be concise and 
+        student_records[n].skill[1] = (int)tempDir["C0"];                           //exact to be able to pull data from SharePoint.
+        student_records[n].skill[2] = (int)tempDir["Java"];
+        student_records[n].skill[3] = (int)tempDir["PHP"];
+        student_records[n].skill[4] = (int)tempDir["DigitalSignalProcessing"];
+        student_records[n].skill[5] = (int)tempDir["RaspberryPi"];
+        student_records[n].skill[6] = (int)tempDir["EmotivHeadset"];
+        student_records[n].skill[7] = (int)tempDir["NAORobot"];
+        student_records[n].skill[8] = (int)tempDir["KinectSensor"];
+        student_records[n].skill[9] = (int)tempDir["OculusRift"];
+        student_records[n].skill[10] = (int)tempDir["GoogleGlass"];
+        student_records[n].skill[11] = (int)tempDir["Networking"];
+        student_records[n].skill[12] = (int)tempDir["WindowsOS"];
+        student_records[n].skill[13] = (int)tempDir["LinuxOS"];
+        student_records[n].skill[14] = (int)tempDir["AndroidDevelopment"];
+        student_records[n].skill[15] = (int)tempDir["CircuitsDesign"];
+        student_records[n].skill[16] = (int)tempDir["CircuitsBuilding"];
+        student_records[n].skill[17] = (int)tempDir["JavascriptWordpress"];
+        student_records[n].skill[18] = (int)tempDir["HTML"];
+        student_records[n].skill[19] = (int)tempDir["Database"];
+        student_records[n].skill[20] = (int)tempDir["GraphicDesign"];
+        student_records[n].skill[21] = (int)tempDir["c_3DPrinting"];
+        student_records[n].skill[22] = (int)tempDir["CAD"];
+        student_records[n].skill[23] = (int)tempDir["c_3DModeling"];
+        student_records[n].skill[24] = (int)tempDir["UnityGameEngine"];
+        student_records[n].skill[25] = (int)tempDir["MATLAB"];
+        student_records[n].skill[26] = (int)tempDir["Python"];
+        student_records[n].skill[27] = (int)tempDir["LSL"];
+        student_records[n].skill[28] = (int)tempDir["MachineLearning"];
+        student_records[n].skill[29] = (int)tempDir["DataMining"];
+        student_records[n].skill[30] = (int)tempDir["ArtificialIntelligence"];
+    }
+    ListOperation_Control = llListen(List_Operation, "", NULL_KEY, "");     //Active listener for List_Operation
+    listen_refresh = llListen(Refresh_channel, "", NULL_KEY, "");           //Active listener for refresh channel
+}
+
+//HTTP Request in C#. NOT using llHTTPRequest().
+public string HTTPRequest(string url, string httpMethod, string body)
+{
+    System.Net.HttpWebRequest request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create (url); //create HTTP Request
+    request.Accept = "application/json;odata=verbose"; //neccesity for getting JSON data from SharePoint
+    
+    //send OpenSim info for server logging
+    string ownerKey = llGetOwner();
+    request.Headers.Add("X-SecondLife-Owner-Key", ownerKey);
+    request.Headers.Add("X-SecondLife-Owner-Name", llKey2Name(ownerKey)); 
+    request.Headers.Add("X-SecondLife-Local-Position", (string)llGetPos());
+    request.Headers.Add("X-SecondLife-Region", llGetRegionName());
+    request.Headers.Add("X-SecondLife-Object-Name", llGetObjectName()); 
+    
+    System.Net.WebResponse response = request.GetResponse (); //execute HTTP Request
+    
+    //get the response and set in a string
+    System.IO.Stream dataStream = response.GetResponseStream ();
+    System.IO.StreamReader reader = new System.IO.StreamReader (dataStream);
+    string responseFromServer = reader.ReadToEnd ();
+    
+    reader.Close ();
+    response.Close ();
+    
+    return responseFromServer;
+}
+
+/*
+    The listen event will listen to List_Operation from the Directory prototype for a name and after it got the name of the person
+    it will search for the user with the matching name and pass the information to another script.
+*/
+public void default_event_listen (LSL_Types.LSLInteger channel, LSL_Types.LSLString name, LSL_Types.LSLString id, LSL_Types.LSLString msg)
+{
+    //If the channel = List_Operation channel (define above)
+    if (channel == List_Operation)
+    {
+        string StudentName = msg;
+        for (int count = 0; count < student_records.Count; count++)
+        {
+            if (StudentName == (student_records[count].FirstName + " " + student_records[count].LastName))      //Compare name
+            {
+                llSay(0, StudentName);
+                llMessageLinked(Skill_Central, 0,                       //pass student skills to another script.
+                        student_records[count].skill[0] + ":" +
+                        student_records[count].skill[1] + ":" +
+                        student_records[count].skill[2] + ":" +
+                        student_records[count].skill[3] + ":" +
+                        student_records[count].skill[4] + ":" +
+                        student_records[count].skill[5] + ":" +
+                        student_records[count].skill[6] + ":" +
+                        student_records[count].skill[7] + ":" +
+                        student_records[count].skill[8] + ":" +
+                        student_records[count].skill[9] + ":" +
+                        student_records[count].skill[10] + ":" +
+                        student_records[count].skill[11] + ":" +
+                        student_records[count].skill[12] + ":" +
+                        student_records[count].skill[13] + ":" +
+                        student_records[count].skill[14] + ":" +
+                        student_records[count].skill[15] + ":" +
+                        student_records[count].skill[16] + ":" +
+                        student_records[count].skill[17] + ":" +
+                        student_records[count].skill[18] + ":" +
+                        student_records[count].skill[19] + ":" +
+                        student_records[count].skill[20] + ":" +
+                        student_records[count].skill[21] + ":" +
+                        student_records[count].skill[22] + ":" +
+                        student_records[count].skill[23] + ":" +
+                        student_records[count].skill[24] + ":" +
+                        student_records[count].skill[25] + ":" +
+                        student_records[count].skill[26] + ":" +
+                        student_records[count].skill[27] + ":" +
+                        student_records[count].skill[28] + ":" +
+                        student_records[count].skill[29] + ":" +
+                        student_records[count].skill[30].ToString(), NULL_KEY);
+            }
+        }
+    }
+    //If the channel is the refresh channel, the prototype will clear the list and reset the script.
+    else if (channel == Refresh_channel)
+    {
+        llSay(0, "Reset Sucess!");
+        student_records.Clear();
+        llResetScript();
+    }  
+}
