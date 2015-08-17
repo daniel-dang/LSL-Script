@@ -1,0 +1,106 @@
+/*
+Script description:
+The purpose of this script is to deliver information to other child prim and SetText on top
+of other child prim to display information about the region.
+*/
+
+//Variable for storing region information
+string region_name; 
+string host_name;
+string user_in;
+string region_status;
+string Time_Dialation;
+string Host_Name;
+string Region_Name;
+string EST_Time;
+
+float region_memory;
+integer total_prim;
+integer FPS;
+
+//Vector colors
+vector color_green = <0.004, 1.0, 0.439>;
+vector color_red = <1, 0, 0>;
+
+//Function to format precision output of numbers
+string FormatDecimal(float number, integer precision)
+{ 
+    //The llPow function return a float that is the precision variable raise to 10
+    //since the presicion variable is negative, the function raise to negative power value and multiply by .5   
+    float roundingValue = llPow(10, -precision)*0.5;    
+    float rounded;
+    if (number < 0) rounded = number - roundingValue; //if number less than 0 round down.
+    else            rounded = number + roundingValue; //if number more than 0 round up.
+ 
+    if (precision < 1) // Rounding integer value
+    {
+        integer intRounding = (integer)llPow(10, -precision);
+        rounded = (integer)rounded/intRounding*intRounding;
+        precision = -1; // Don't truncate integer value
+    }
+ 
+    string strNumber = (string)rounded;
+    return llGetSubString(strNumber, 0, llSubStringIndex(strNumber, ".") + precision);
+}
+
+string time_est()
+{
+            integer sltSecs = (integer) llGetWallclock();               // Get SL time in seconds (will be either PST or PDT)
+        integer diff    = (integer) llGetGMTclock() - sltSecs;      // Compute the difference between UTC and SLT
+        string  EST = " EST";                                   // EST time
+ 
+        // If the difference between SLT and UTC is 7 hours or -17 hours, then SLT is currently PDT
+        if (diff == 25200 || diff == -61200)         
+            EST = " EST";           
+        integer Mins  = sltSecs / 60;
+        integer Hours = Mins / 60;
+        Mins = Mins % 60;
+        string AMPM = " AM";
+        if (Hours > 11)            // Convert to 12-hour format with PM indication
+        {
+            AMPM = " PM";
+            Hours -= 12;
+        }
+        if (Hours == 0)
+            Hours = 12;
+        //llSetText( (string) Hours + ":" + llGetSubString("0" + (string) Mins,  -2, -1) + AMPM + EST, <1,1,1> ,1);
+        
+        string time = (string) Hours + ":" + llGetSubString("0" + (string) Mins,  -2, -1) + AMPM + EST;
+    return time;
+}
+
+//----------------------------------------MAIN PROGRAM---------------------------------------------
+default
+{
+    state_entry()
+    {
+        llSetTimerEvent(5.0);   //set timer event
+    } 
+    timer()
+    {
+        list Stats = osGetRegionStats();                                        //get region stats
+        Time_Dialation = (string)llList2Float(Stats, STATS_TIME_DILATION);      //get time dilation
+        FPS = llList2Integer(Stats,STATS_SIM_FPS);                              //get fps
+        user_in = (string)llList2Integer(Stats, STATS_ROOT_AGENTS);             //get users
+        total_prim = llList2Integer(Stats, STATS_TOTAL_PRIMS);                  //get total prims
+        
+        region_memory = osGetSimulatorMemory();                                 //get simulator memory
+        region_memory = region_memory / 1000000000;                             //The return number is in bytes
+        string format_memory;       
+        format_memory = FormatDecimal(region_memory, 3);                        //format memory number to 3 decimal
+        string time_dialation_format = FormatDecimal(Time_Dialation, 1);        //format time dilation to 1 decimal
+                
+        Host_Name = llGetSimulatorHostname();                                   //get Host Name
+        Region_Name = llGetRegionName();                                        //get Region Name   
+        EST_Time = time_est();                                                  //get EST time
+        
+        //display text
+        llSetText(EST_Time + " \n" + Region_Name + " \n" + " \n" + " \n" + " \n" + " \n" + " \n" +
+                 "Time Dilation: " + time_dialation_format + " \n" + " \n", color_red, 1.0); 
+        llSetLinkPrimitiveParamsFast(7,
+                                [PRIM_TEXT, "Users: " + user_in + "\n" +                                                                     "Total Prims: " + total_prim + "\n", color_green, 1.0]);
+        llSetLinkPrimitiveParamsFast(8,
+                                [PRIM_TEXT,"Host: " + Host_Name + "\n" +
+                                            "Simulator Mem: " + format_memory + " GB", color_red, 1.0]);
+    }
+}

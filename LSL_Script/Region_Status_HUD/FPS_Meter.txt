@@ -1,0 +1,53 @@
+/*
+Scrip description:
+The purpose of this script is to get fps reading and config the needle in the tachometer
+to rotate according to the fps reading.
+*/
+
+//variables
+integer channel;
+integer Min_rotation;
+integer Max_rotation;
+rotation rot;
+
+list stat;
+integer fps;
+integer fps1;
+integer fps_store = 0;
+
+//default needle point at 0 fps (**if modify, need to find the rotation value when the needle point to 0 again)
+rotation default_rot = <0.632745,-0.315448, -0.632957, -0.315421>;
+
+//color vector
+vector color_white = <1.000, 1.000, 1.000>;
+vector color_red = <1.0, 0.0, 0.0>;
+default
+{
+    state_entry()
+    {
+        /*
+            Tachometer Reading Scale:
+            1 FPS = 3.9 degree
+        */
+        llSetTimerEvent(5.0);                                       //set timer event, run every 5 seconds
+        list params;                                                
+        params = llGetLinkPrimitiveParams(4, [PRIM_ROT_LOCAL]);     //get local rotation value, current roation of needle
+        string rotation_str = (string)params;                       //type cast: list -> string
+        rotation rotation_default = (rotation)rotation_str;         //type cast: string -> rotation
+        llSetLocalRot(default_rot);                                 //HUD start out with default rotation, see above
+    }
+    
+    //timer event
+    timer()
+    {
+        stat = osGetRegionStats();                      //get region stats
+        fps = llList2Integer(stat, STATS_SIM_FPS);      //get fps
+        //if fps is not = fps_store, meaning the previous fetch of fps is different than current
+        if (fps != fps_store)                       
+        {
+            //Set local roation of needle to the different between previous and current rotation and multiply by the fps scale.
+            llSetLocalRot(llEuler2Rot(<(fps - fps_store)*3.9, 0,0> * DEG_TO_RAD) * llGetLocalRot());
+        }
+        fps_store = fps; //set the current fps to fps_store to store it for next time run.
+    }
+} 

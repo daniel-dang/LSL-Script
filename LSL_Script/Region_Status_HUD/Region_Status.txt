@@ -1,0 +1,45 @@
+/*
+Script description:
+The purpose of this script is to control the status of region (up/down, etc...)
+and set text over the prim to display the status
+*/
+
+//exact name of current region
+string DirectorIsland = "Director Island";
+string SATEproject = "SATE Project Island";
+
+//status key
+key status1;
+key status2;
+
+//storing status variable
+string Director_status;
+string SATE_status;
+
+//vector color
+vector color_green = <0.004, 1.0, 0.439>;
+
+default
+{
+    state_entry()
+    {
+        llSetTimerEvent(5.0);       //set timer event
+    }
+    
+    timer ()
+    {
+       status1 = llRequestSimulatorData(DirectorIsland, DATA_SIM_STATUS);   //request status of DirectorIsland
+       status2 = llRequestSimulatorData(SATEproject, DATA_SIM_STATUS);      //request status of SATE Project Island
+    
+        //set text to prim
+       llSetText("Director Island: " + Director_status + "\n" +
+                "SATE PRJ Island: " + SATE_status + " \n", color_green, 1.0);
+    }
+    
+    //dataserver request event, if the key is valid, the event will trigger
+    dataserver (key id, string status)
+    {
+        if (id == status1)      {Director_status = status;}     //store status of Director Island to string
+        if (id == status2)      {SATE_status = status;}         //store status of SATE Project Island to string
+    }
+}

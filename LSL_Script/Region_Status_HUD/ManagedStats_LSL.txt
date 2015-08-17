@@ -1,0 +1,113 @@
+/*
+    This script communicates to hud.php to get information on the region from the ManagedStats page.
+    The php script sends filtered data back to this script in application/x-www-form-urlencoded Content-Type. This way,
+    we can use the custom get_query()function.
+    
+    To get more information from the ManagedStats page, you will have to edit the hud.php file to send back 
+    the information needed.
+*/
+
+// The magic changed flags to know when to re-request an url
+// CHANGED_REGION | CHANGED_REGION_START | CHANGED_TELEPORT
+integer CHANGED_URL = 1792;
+
+string SITE_URL = "http://anthonyalves.science/opensim/hud.php";
+string primUrl;
+
+key urlRequestId;
+
+float REFRESH_INTERVAL = 5.0; 
+
+string regionStats;
+
+requestUrl () {
+    llReleaseURL(primUrl);
+    primUrl = "";
+
+    urlRequestId = llRequestURL();
+}
+
+getStats(){
+    string content = "?url=" + primUrl;  
+    string url = SITE_URL + content;
+    llHTTPRequest(url, [HTTP_METHOD, "GET",HTTP_MIMETYPE,"application/x-www-form-urlencoded"], "");     
+}
+
+string replace_all(string src, string target, string replace) {
+    return llDumpList2String(llParseString2List(src,[target],[]),replace);
+}
+
+string get_query(string query, string variableName) {
+    query = replace_all(query,"+"," ");
+    query = llUnescapeURL(query);
+    list q = llParseString2List(query,["=","&",";"],[]);
+    integer i = llListFindList(q,[variableName]); 
+    if (i != -1)
+    {
+        return llList2String(q,i+1);
+    }
+ 
+    return "";
+}
+
+default {  
+
+    state_entry() {
+        llSetTimerEvent(REFRESH_INTERVAL);
+        requestUrl();
+    }
+    
+    changed(integer change) {
+        if (change & (CHANGED_URL))
+            requestUrl();
+    }
+    
+    
+    touch_start(integer n) { 
+        //requestUrl();
+    }
+    
+     http_request(key id, string method, string body) {
+        string params = llGetHTTPHeader(id,"x-query-string");
+        if (method == URL_REQUEST_GRANTED) {
+            
+            llOwnerSay("There are " + (string)  llGetFreeURLs() + " URLs left.");
+            llOwnerSay("url: " + body);
+            primUrl = body;
+            
+            //send url to database
+            getStats();
+            
+        }  else if (method == URL_REQUEST_DENIED) {
+            llOwnerSay("There are " + (string)  llGetFreeURLs() + " URLs left.");
+            llOwnerSay("Something went wrong, no url. " + body);
+            
+            //unable to get url
+        } else { //unsupported method
+            llHTTPResponse(id,405,"Unsupported Method");   
+        }
+    }
+ 
+
+    
+    http_response(key id, integer status, list metadata, string body) {
+        regionStats = body; 
+        //llOwnerSay(body);
+        //llOwnerSay(regionStats);
+        string stat = "CPU: " + get_query(regionStats, "CPUPercent") + "%\n";
+        stat += "Region: " + get_query(regionStats, "Region") + "\n";
+        integer ping = (integer)((float)get_query(regionStats, "time") * 1000);
+        stat += "Ping?: " + ping + " ms \n";
+        stat += "SIM FPS: " + get_query(regionStats, "SimFPS") + "\n";
+        stat += "Memory: " + get_query(regionStats, "HeapMemory") + "/" + get_query(regionStats, "ProcessMemory") + " MB\n";
+        llSetText(stat, <1,1,1>, 1); 
+    }
+    
+    timer() {
+        if (primUrl == "") { 
+            requestUrl();
+            return;
+        }
+        getStats();   
+    }
+}

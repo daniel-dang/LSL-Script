@@ -1,0 +1,37 @@
+/* 
+Script description:
+The purpose of this script is to change color of the tachometer prim red and white
+interchangeably to act as a warning sign when the fps fall under certain criteria.
+*/
+//color vectors 
+vector white = <1.000, 1.000, 1.000>;
+vector red = <1.0,0.0,0.0>;
+
+integer fps;
+list stat;
+//------------------------------------MAIN PROGRAM------------------------------------------
+default
+{
+    state_entry()
+    {
+        llSetTimerEvent(2.0);       //Set timer event to repeat every 2 seconds
+    }
+    timer()
+    {   
+        stat = osGetRegionStats();                  //get the region stats
+        fps = llList2Integer(stat, STATS_SIM_FPS);  //get only fps stats from the list 
+        
+        //if fps fall under 15, execute.
+        if (fps < 15)
+        {
+            llSetLinkPrimitiveParamsFast(1,[PRIM_COLOR, ALL_SIDES, red, 1.0]);      //change color to red
+            llSleep(1.0);                                                           //sleep script for 1 second
+            llSetLinkPrimitiveParamsFast(1,[PRIM_COLOR, ALL_SIDES, white, 1.0]);    //change color back to white
+        }
+        //if fps is more than 15 then the color always white
+        else
+        {
+            llSetLinkPrimitiveParamsFast(1,[PRIM_COLOR, ALL_SIDES, white, 1.0]);    //change color to white.
+        }
+    }
+}
