@@ -1,0 +1,115 @@
+/*
+Script Function:
+- This script primary function is to get the media 
+that displayed from one prim to display in another prim. 
+The function that will be use in this script will be the llDialog
+and llGetLinkMedia function.
+- llDialog generate menu for choosing projector, and current this script only
+have 1 projector. Can be implement more if needed.
+- llGetLinkMedia will get the media from one prim and return a list so that 
+the llSetLinkMedia will use element from that list to display that media 
+in another prim. 
+
+*/
+
+//---------------------------------------------------------------------------------------------------
+
+//Here's all the global variables that the projector system will be using.
+//These variable is used uniformly throughout the script so if there is any
+//changes, the change can be made from here and not the entire script. 
+
+list GetMedia_Array;        //List for llGetLinkMedia function
+integer Source_Link = 7;    //The link number of the prim that the script will be getting the 
+                            //information from
+integer Source_Link_Face = 2;//The face number of the prim the script will be getting the information
+                            //from.
+integer  gListener;         //Variable for listen funciton.
+
+integer Link_Number1 = 11;  //Link number for projector 1
+integer Link_Number2 = 4;   //Link number for projector 2, currently not use
+integer Link_Number3 = 5;   //Link number for projector 3, currently not use
+
+integer Width = 2000;       //Projector width pixels, max is 2000
+integer Height = 1000;      //Projector height pixels, max is 2000
+integer Face_Number = 2;    //Projector face number
+
+//choosing channel number
+integer channel = 0;
+key ID_Global;
+
+//-------------------------------------------------------------------------------------------------
+
+//Set up menus
+//Main menu
+string Projector_Menu = "Which projector would you like to use?";
+list Projector_Button = ["Projector 1", "Close"];
+
+integer dialogChannel;
+integer dialogHandle;
+
+//Open action. 
+//Can set time for the menu to open for certain time limit.
+//Timmer event currently off.
+
+ //Menu handler setup
+open_menu(key inputKey, string inputString, list inputList)
+{
+    dialogChannel = (integer)llFrand(DEBUG_CHANNEL)*-1;
+    dialogHandle = llListen(dialogChannel, "", inputKey, "");
+    llDialog(inputKey, inputString, inputList, dialogChannel);
+    //currently no timer for opening
+    //llSetTimerEvent(30.0); 
+}
+
+//Close action
+//This close action can set time delay until close. To get time delay, put time in second for 
+//timer event.
+
+//Menu close command setup
+close_menu()
+{
+    llSetTimerEvent(0.0);// you can use 0 as well to save memory
+    llListenRemove(dialogHandle);
+}
+
+//------------------------------------- ENTER MAIN PROGRAM ------------------------------------------
+
+default
+{
+    //on touch, get user UUID (KEY), close menu, open menu again and activate listen function
+    touch_start(integer total_number)
+    {
+        // "" saves byte-code over NULL_KEY
+        gListener = llListen( channel, "", "", "");   
+        key id = llDetectedKey(0);  //Detect user UUID
+        ID_Global = id;  
+        close_menu();
+        open_menu(id, Projector_Menu, Projector_Button);
+    }
+    
+    //Open listen event to activate menu selection. 
+    listen(integer channel, string name, key id, string message)
+    {
+       if (channel != dialogChannel)        //trigger when message is not on dialogChannel.
+            return;
+        close_menu();
+        
+        //Main Menu
+        //If user click on projector 1, script will get media from the source prim link and 
+        //return a list of params and llSetLinkMedia will script that media onto 
+        //another prim that link to the system.
+        if (message == "Projector 1")
+        {
+           GetMedia_Array = llGetLinkMedia(Source_Link, Source_Link_Face,
+                [PRIM_MEDIA_CURRENT_URL]);
+                
+            llSetLinkMedia(Link_Number1, Face_Number, 
+                        [PRIM_MEDIA_CURRENT_URL,llList2String(GetMedia_Array,0),
+                        PRIM_MEDIA_AUTO_PLAY, TRUE,
+                        PRIM_MEDIA_WIDTH_PIXELS, Width,
+                        PRIM_MEDIA_HEIGHT_PIXELS,Height
+                        ]);
+                llSay(0, "Projector 1: " + "\"" + llList2String(GetMedia_Array,0) + "\"" + " Loaded");
+        }
+    }
+}

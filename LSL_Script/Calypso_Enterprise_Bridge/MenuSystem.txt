@@ -1,0 +1,449 @@
+/*
+Script Function:
+- This entire script is to make a prim have a menu system that can 
+set URL in to specific prim on a specific face to display the content of 
+that URL. 
+- If you want to make the prim unaccessable to another link within the page inside of the media prim,
+simply just create a regular prim.
+- If you want to make the prim accessable to another link within the page inside of the media prim,
+simply just create a media prim.
+*/
+
+//Here's all the global variables that access to prim pixels, link number, and face number.
+//Any change to the link and face on the target media prim can be made here rather than on the entire 
+//script.
+
+integer Link_Number = 12;
+integer Face_Number = 2;
+integer Width = 2000;
+integer Height = 1000;
+
+//------------------------------------------------------------------------------------------------------
+
+
+//-----------------------------------LIST OF MENU-------------------------------------------------------
+
+/*
+- Below are entire list with button that will run the menu scripting system. 
+- List are buttons and max button inside of a list can be 12.
+
+- IMPORTANT**: list and string variable cannot have the same name
+
+- string: are the message that will display when the user inside of the chosen list.
+- list: are menu button to nagivate through the system.
+*/
+
+string mainMenuDialog = "Welcome to Mobile DCC media prim menu prototype 1\n\nMain Menu";
+list mainMenuButtons = ["Activity", "Forum", "Mobile Admin",
+                        "Action Items", "Directory", "Group",
+                        "Match Maker", "Task Board", "Analytic",
+                        "Close"];
+
+string MobileAdminMenu = "Main Menu > Mobile Admin";
+list MobileAdmin_Button = ["ACC APRVL", "Task Gen", "Task Admin", "-Main-", "Close"];
+ 
+string Analytic_Menu = "Main Menu > Analytic";
+list Analytic_Button = ["eDaily", "PrjConnection", "Skill/Int", "-Main-", "Close"];
+
+string eDaily_Menu = "Main menu > Analytic > eDaily \n\neDaily By:";
+list eDaily_Button = ["Day", "Student", "Project", "-Main-", "Analytic", "PrjAverage"];
+ 
+//--------------------------------------------------------------------------------------------------------
+ 
+//--------------------------------------Open and Close Action --------------------------------------------
+
+/*
+- Below are the action Open menu system. 
+- Open_menu use debug channel not regular channel.
+    - Prim use debug channel to communicate between prim to know which button the user has clicked.
+    - Time event for open menu current set to off. if you want time limit on how long the menu can be open
+        you can just enable and change the time inside of the argument for llSetTimerEvent.
+        - Time count in second. 
+*/
+
+
+integer dialogChannel;
+integer dialogHandle;
+ 
+open_menu(key inputKey, string inputString, list inputList)
+{
+    dialogChannel = (integer)llFrand(DEBUG_CHANNEL)*-1;
+    dialogHandle = llListen(dialogChannel, "", inputKey, "");
+    llDialog(inputKey, inputString, inputList, dialogChannel);
+    //currently no timer for opening
+    //llSetTimerEvent(30.0);
+}
+ 
+/*
+ - close menu action will close the menu when the user click close
+ - Close action have a timer and currently set to 0. 
+    - You can set delay time for menu to close, simply just put how many second you want in the timer.
+*/
+ 
+close_menu()
+{
+    llSetTimerEvent(0.0);           // you can use 0 as well to save memory
+    llListenRemove(dialogHandle);   //This remove any listen still active
+}
+ 
+//----------------------------------------ENTER MAIN PROGRAM-------------------------------------------
+
+default
+{
+    //On rez, prim will reset entire script
+    on_rez(integer start_param)
+    {
+        llResetScript();
+    }
+    
+    //On touch, prim will detect the user that click on it.
+    touch_start(integer total_number)
+    {
+        key id = llDetectedKey(0);                      //Get the key of the person who clicked on the prim
+        close_menu();                                   //This will close the menu
+        open_menu(id, mainMenuDialog, mainMenuButtons); //This will open main menu
+    }
+ 
+    //Listen script use to listen to the prim on the button that the user is clicked.
+    //Every time user click on a button, there is a message sent out and the prim will intercept
+    //that message to navigate to the appropriate menu set by the program. 
+    //More detail how this work coninue the script below.
+    listen(integer channel, string name, key id, string message)
+    {
+        if(channel != dialogChannel)    //If the channel is not in dialogChannel return
+            return;
+ 
+        close_menu();
+        
+         /*
+            -  GENERAL NOTE***
+            - The entire list below will be if/else if statement.
+            - Notice this is inside of a listen script, the message that was intercepted by the listen script will 
+            compare to the if/else if statement and execute differently according to the message intercepted.
+            - These if and else if is the core of the menu system. 
+            - To change how the menu system behave, simply change the statements inside of these if/else if statement 
+            and the script will work differently. 
+            
+            - Menu System:
+            - The menu system functionality work like this:
+            - Statement if/else if will compare message
+            - If the message is the same as the string script inside of the if/else if statement, that if/else if statement
+                will execute. 
+                    - In general sense, when the user click on a button, there will be a message generate, 
+                    the script will compare the message generate to the if/else if statement.
+                    - The message that will generate is the "List" we just made above. 
+                    - Refer to "List" above for clerification. 
+            - Some of if else statement do not have media script because those will have a submenu. 
+            - For menu that doesn't have sub menu:
+                - There will be media script [ llSetLinkMedia] to display the web content.
+            - For menu that have sub menu:
+                - The execution code will have another open menu action that open submenu associated to that menu.
+                - Then the sub menu will have media script that display the webpage. 
+                    - The sub menu can have another sub menu.
+                    - To make another sub menu simply just have another open action to open that "list" for sub menu.
+                    - **Note: You can make as many sub menu inside of a menu, however, nested submenu inside of a submenu
+                    are not recommended since it can be annoying when the user have to nagvigate through many menu and 
+                    might not be a efficient way for the menu system.
+                    
+                - IMPORTANT***: Name your list menu and list submenu with good name that related to each other to
+                    help organize the script and to help keeping track of script behavior. 
+                
+                - This script was layout and write in the order of the Mobile DCC website in order. It is write in 
+                 this order to advoid confusing and time consumming for debug certain part of the program in the future.
+        */
+ 
+        //Main menu
+        if(message == "-Main-")
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+            
+        //Match Maker Menu
+        else if(message == "Match Maker")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,        //Set auto play to true
+             PRIM_MEDIA_CURRENT_URL,URL,        //This set current url to variable URL
+             PRIM_MEDIA_HOME_URL, URL,          //This set home url to variable URL
+             PRIM_MEDIA_WIDTH_PIXELS,Width,     //Width pixels of media prim
+             PRIM_MEDIA_HEIGHT_PIXELS,Height    //Height pixels of media prim
+            ]);
+            llSay(0, "Match Maker Loaded");     //Output message to 0 channel
+            open_menu(id, mainMenuDialog, mainMenuButtons); //Open menu again for other choices.
+        }
+        
+        //Taskboard menu
+        else if(message == "Task Board")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Taskboard loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+                
+        //Analytic Menu
+        else if (message == "Analytic")
+        {
+            open_menu(id, Analytic_Menu, Analytic_Button);
+        }
+        //eDaily menu
+        else if (message == "eDaily")
+        {
+            open_menu(id, eDaily_Menu, eDaily_Button);
+        }
+        else if (message == "Day")
+        {
+           string URL = "url";
+           llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "eDaily by Day Loaded");
+            
+           open_menu(id, eDaily_Menu, eDaily_Button);
+        }
+        else if (message == "Student")
+        {
+           string URL = "url";
+           llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "eDaily by Student Loaded");
+           open_menu(id, eDaily_Menu, eDaily_Button);
+        }
+        else if (message == "Project")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "eDaily by Project Loaded");
+           open_menu(id, eDaily_Menu, eDaily_Button);
+        }
+        else if (message == "PrjAverage")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "eDaily by Project Avg Loaded");
+           open_menu(id, eDaily_Menu, eDaily_Button);
+        }
+        
+        //Project connection menu
+        else if(message == "PrjConnection")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Project Connection Loaded");
+           open_menu(id, Analytic_Menu, Analytic_Button);
+        }
+        
+        //Skill and interest menu
+        else if(message == "Skill/Int")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Skill & Interest Loaded");
+           open_menu(id, Analytic_Menu, Analytic_Button);
+        }
+        
+         //Action Items menu
+        else if(message == "Action Items")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Action Items loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+        
+         //Directory menu
+        else if(message == "Directory")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Directory Loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+        
+        //Group menu
+        else if(message == "Group")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Group Loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+        
+        //Activity Menu
+        else if(message == "Activity")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Activity Loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+        
+        //Forum Menu
+        else if(message == "Forum")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Forum Loaded");
+            open_menu(id, mainMenuDialog, mainMenuButtons);
+        }
+        
+         //Mobile Admin Submenu
+        else if(message == "Mobile Admin")
+        {
+            open_menu(id, MobileAdminMenu, MobileAdmin_Button);
+        }
+        
+        //Account Aproval
+        else if(message == "ACC APRVL")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Account Aproval Loaded");
+            open_menu(id, MobileAdminMenu, MobileAdmin_Button);
+        }
+        
+        //Task Generator
+        else if(message == "Task Gen")
+        {
+            string URL = "url";
+            llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Task Generator Loaded");
+            open_menu(id, MobileAdminMenu, MobileAdmin_Button);
+        }
+        
+        //Task Admin
+        else if(message == "Task Admin")
+        {
+            string URL = "url";
+             llSetLinkMedia(Link_Number,Face_Number,
+             //List of Params
+            [
+             PRIM_MEDIA_AUTO_PLAY, TRUE,
+             PRIM_MEDIA_CURRENT_URL,URL,
+             PRIM_MEDIA_HOME_URL, URL,
+             PRIM_MEDIA_WIDTH_PIXELS,Width,
+             PRIM_MEDIA_HEIGHT_PIXELS,Height
+            ]);
+            llSay(0, "Task Admin Loaded");
+            open_menu(id, MobileAdminMenu, MobileAdmin_Button);
+        }
+        
+    }
+ 
+ /*
+ - The script below set timer event to close the menu.
+ - To have timer event auto close the menu, just take out comment operator to turn that code on.
+ */
+ 
+    /*timer()
+    {
+        close_menu();
+    }*/
+}
