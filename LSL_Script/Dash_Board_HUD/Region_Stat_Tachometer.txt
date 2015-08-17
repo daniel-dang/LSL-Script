@@ -1,0 +1,245 @@
+/*
+Script objective:
+- This script is design to get the value of fps, upload speed, download speed
+    from the another object via Message Link event.
+- After the the script obtain the value, it will search for fps, upload speed,
+    download speed and set them to the right global variable below.
+- Timer event was set to run every 5 seconds and will set new value for the tachometer.
+- If old value is the same as new value, the script will do nothing.
+
+Script Author: Daniel Dang
+*/
+integer FPS_needle = 2;                                             //prim number for FPS needle
+rotation Default_FPS = <0.116706, -0.697409, 0.128860, 0.695266>;   //Default rotation value for fps needle (important, do not change unless value is wrong
+integer FPS;                                                        //variable to store fps value
+integer fps_store = 0;                                              //variable to store old fps value, initialize at 0. 
+
+integer UP_needle = 4;                                              //Prim number for upload needle
+rotation Default_UP = <-0.331966,-0.624338,-0.342812,0.618450>;     //Default rotation value for upload needle
+integer UP;                                                         //Variable to store upload value
+integer up_store = 0;                                               //Variable to store old upload value.
+
+integer DOWN_needle = 3;                                            //prim number for download needle
+rotation Default_DOWN = <0.342812,-0.618450,0.364187,0.606109>;     //Default rotation value for download needle
+integer DOWN;                                                       //Variable to store download value
+integer down_store = 0;                                             //Variable to store old download value.
+
+//other prim stat prim number
+integer regionName = 9;
+integer portNumber = 10;
+integer inUser = 11;
+integer prims = 12;
+integer scripts = 13;
+
+//other server stats variable
+string RegionName;
+string PortNumber;
+string InUser;
+string Prims;
+string Scripts;
+string Region_state;
+
+//color coded prim number
+integer FPS_indicator = 16;
+integer Up_indicator = 15;
+integer Down_indicator = 14;
+integer Region_unresponsive = 1;
+
+//This is the rate of degree/unit to cofig the needle rotation
+/*
+FPS Rate: 2.0143 degree/fps
+UP Rate: 3 degree/up
+Down Rate: -3 degree/down
+*/
+
+//rate of degree/unit to offset the rotation
+float fps_rate = 2.0143;
+float up_rate = 3.0;
+float down_rate = -3.0;
+
+
+integer channel;                            //channel for listen function (if there is any)
+integer sender_prim;                        //Prim number of the prim that send the string value
+
+//Color vector
+vector white = <1.0, 1.0, 1.0>;
+vector red = <1.0, 0.0, 0.0>;
+vector blue = <0, 0, 1>;
+vector yellow = <1, 1, 0>;
+vector green = <0, 1, 0>;
+
+//This function is to get the default rotation value for each needle
+string getNeedleRot(integer prim)
+{
+    list params;                                                 //list variable to store rotation for function llGetLinkPrimitiveParam
+    params = llGetLinkPrimitiveParams(prim, [PRIM_ROT_LOCAL]);  //Get local rot of fps needle
+    string rotation_str = (string)params;                       //type cast list -> string
+        
+    return rotation_str;                                        //return string value
+}
+
+//This function is to rotate the needle to appropriate angle
+Needle_rot(integer prim)
+{
+    //If the prim number is the same as the FPS_needle prim number (verification step), then execute.
+    if ((prim == FPS_needle) && (FPS != fps_store))                       
+    {
+        //Set local roation of needle to the different between previous and current rotation and multiply by the fps scale.
+        llSetLinkPrimitiveParamsFast(prim, [PRIM_ROT_LOCAL, 
+                                                llEuler2Rot(<(FPS - fps_store)* fps_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot()]);
+        
+        //llSetLocalRot(llEuler2Rot(<(fps - fps_store)* fps_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot());
+        
+        if (FPS < 15)
+        {
+            llSetLinkPrimitiveParamsFast(FPS_indicator,[PRIM_COLOR, ALL_SIDES, red, 1.0]);      //change color to red
+            llSleep(1.0);                                                           //sleep script for 1 second
+            llSetLinkPrimitiveParamsFast(FPS_indicator,[PRIM_COLOR, ALL_SIDES, white, 1.0]);    //change color back to white
+        }
+        //if fps is more than 15 then the color always white
+        else
+        {
+            llSetLinkPrimitiveParamsFast(FPS_indicator,[PRIM_COLOR, ALL_SIDES, blue, 1.0]);    //change color to white.
+        }   
+        
+        fps_store = FPS; //set the current fps to fps_store to store it for next time run.
+    }
+    
+    //If the prim number is the same as the UP_needle prim number, then execute.
+    else if (prim == UP_needle && UP != up_store)
+    {
+        //Set local roation of needle to the different between previous and current rotation and multiply by the fps scale.
+        llSetLinkPrimitiveParamsFast(prim, [PRIM_ROT_LOCAL, 
+                                                llEuler2Rot(<(UP - up_store)* up_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot()]);
+                                                
+        //llSetLocalRot(llEuler2Rot(<(fps - fps_store)* up_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot());
+        if (UP > 35)
+        {
+            llSetLinkPrimitiveParamsFast(Up_indicator,[PRIM_COLOR, ALL_SIDES, green, 1.0]);
+        }
+        else if (UP >= 20 && UP <=34)
+        {
+            llSetLinkPrimitiveParamsFast(Up_indicator,[PRIM_COLOR, ALL_SIDES, yellow, 1.0]);
+        }
+        else if (UP < 20)
+        {
+            llSetLinkPrimitiveParamsFast(Up_indicator,[PRIM_COLOR, ALL_SIDES, red, 1.0]);
+        }
+        
+        up_store = UP; //set the current fps to fps_store to store it for next time run.
+    }
+    
+    //If the prim number is the same as the DOWN_needle prim number, then execute
+    else if (prim == DOWN_needle && DOWN != down_store)
+    {
+     //Set local roation of needle to the different between previous and current rotation and multiply by the fps scale.
+      llSetLinkPrimitiveParamsFast(prim, [PRIM_ROT_LOCAL, 
+                                                llEuler2Rot(<(DOWN - down_store)* down_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot()]);
+                                                
+        //llSetLocalRot(llEuler2Rot(<(fps - fps_store)* down_rate, 0,0> * DEG_TO_RAD) * llGetLocalRot());
+    
+        if (DOWN > 35)
+        {
+            llSetLinkPrimitiveParamsFast(Down_indicator,[PRIM_COLOR, ALL_SIDES, green, 1.0]);
+        }
+        else if (DOWN >= 20 && DOWN <=34)
+        {
+            llSetLinkPrimitiveParamsFast(Down_indicator,[PRIM_COLOR, ALL_SIDES, yellow, 1.0]);
+        }
+        else if (DOWN < 20)
+        {
+            llSetLinkPrimitiveParamsFast(Down_indicator,[PRIM_COLOR, ALL_SIDES, red, 1.0]);
+        }
+        down_store = DOWN; //set the current fps to fps_store to store it for next time run.   
+    }
+}
+
+//This function is to search and set value for fps, upload speed, and dowlnoad speed
+String_search(string input)
+{
+    //string format: FPS|UP|DOWN|RegionName|Port#|LogedInUser|TotalPrims|TotalScripts|RegionUnresponsive(Yes/No)
+    list Stats = llParseString2List(input, "|", "");
+        
+    integer FPS = llList2Integer(Stats, 0);
+    integer UP = llList2Integer(Stats, 1);
+    integer DOWN = llList2Integer(Stats, 2);
+    string RegionName = llList2String(Stats, 3);
+    string PortNumber = llList2String(Stats, 4);
+    string InUser = llList2String(Stats, 5);
+    string Prims = llList2String(Stats, 6);
+    string Scripts = llList2String(Stats, 7);
+    string Region_state = llList2String(Stats, 8);
+    
+    SetText(regionName, RegionName);
+    SetText(portNumber, PortNumber);
+    SetText(inUser, InUser);
+    SetText(prims, Prims);
+    SetText(scripts, Scripts);
+    
+    if (Region_state == "alive")
+    {
+         llSetLinkPrimitiveParamsFast(Region_unresponsive,[PRIM_COLOR, ALL_SIDES, green, 1.0]);
+    }
+    else if (Region_state == "unresponsive")
+    {
+         llSetLinkPrimitiveParamsFast(Region_unresponsive,[PRIM_COLOR, ALL_SIDES, yellow, 1.0]);   
+    }
+    else if (Region_state == "down")
+    {
+         llSetLinkPrimitiveParamsFast(1,[PRIM_COLOR, ALL_SIDES, red, 1.0]);   
+    }
+}
+
+SetText(integer prim, string value)
+{
+    llSetLinkPrimitiveParamsFast(prim,
+                                [PRIM_TEXT,value, green,1.0]);
+}
+//---------------------------------------------------------MAIN FUNCTION------------------------------------------------------------
+default
+{
+    state_entry() 
+    {
+       llSetTimerEvent(5.0);    //Set timer event, run every 5 seconds         
+        
+        //Get fps needle default rotation
+        string FPS_default = getNeedleRot(FPS_needle);
+        //llSay(0,FPS_default);
+        llSetLinkPrimitiveParamsFast(FPS_needle, 
+                                    [PRIM_ROT_LOCAL, Default_FPS]);
+                                    
+        
+        //Get upload needle default rotation
+        string UP_default = getNeedleRot(UP_needle);
+        //llSay(0, UP_default);
+        llSetLinkPrimitiveParamsFast(UP_needle,
+                                    [PRIM_ROT_LOCAL, Default_UP]);
+                                    
+         
+        //Get download needle default rotation
+        string DOWN_default = getNeedleRot(DOWN_needle);
+        //llSay(0, DOWN_default);
+        llSetLinkPrimitiveParamsFast(DOWN_needle,
+                                    [PRIM_ROT_LOCAL, Default_DOWN]);
+    }
+    
+    //Link message event to get data from another prim.
+    link_message(integer sender_num, integer num, string value, key id)
+    {
+        //string format: FPS|UP|DOWN|RegionName|Port#|LogedInUser|TotalPrims|TotalScripts
+        if (sender_num == sender_prim)
+        { 
+            String_search(value);
+        }
+    }
+    
+    //Timer event will execute 3 function calls
+    timer ()
+    {
+        //run rotation function every 5 seconds
+        Needle_rot(FPS_needle);     //rotate fps needle
+        Needle_rot(UP_needle);      //rotate upload needle
+        Needle_rot(DOWN_needle);    //rotate download needle
+    }
+}
+

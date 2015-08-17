@@ -1,0 +1,87 @@
+/*
+Script Description: 
+    - The objective of this script is to set information on multiple prim and set path cut on one of the pie chart in the prototype. 
+    - This grid display will display the grid name, host name for the grid, total regions inside of this grid, total user inside of the grid
+    total prim, and total scripts inside of the grid. 
+    - The pie chart will display percentage of the number region that are up, depending on how much the regions are up that the pie will cut
+    to a certain amount. If all the regions are up, the pie will not cut and will remain whole.
+    
+Script Author: Daniel Dang
+*/
+
+//Prim link number library
+integer GridName = 15;
+integer ServerName = 14;
+integer RegionsCount = 13;
+integer UsersCount = 12;
+integer PrimsCount = 11;
+integer ScriptsCount = 10;
+integer RegionUpCount = 9;
+
+//This integer is to display the percentage of the number of regions that currently up in a grid.
+//currently set to 1 for demonstration purposes.
+integer RegionPercentDisplay = 1;
+
+integer Sender = 0;     //Link number of the prim that will send this script all the information. 
+
+//This function main purpose is to set text to the designate prim number with specific colors
+SetText(integer Prim, string msg)
+{
+    //color vector
+    vector NAVY = <0.000, 0.122, 0.247>;
+    vector BLUE = <0.000, 0.455, 0.851>;
+    vector AQUA = <0.498, 0.859, 1.000>;
+    vector TEAL = <0.224, 0.800, 0.800>;
+    vector OLIVE = <0.239, 0.600, 0.439>;
+    vector GREEN =<0.180, 0.800, 0.251>;
+    vector LIME = <0.004, 1.000, 0.439>;
+    vector YELLOW = <1.000, 0.863, 0.000>;
+    vector ORANGE = <1.000, 0.522, 0.106>;
+    vector RED = <1.000, 0.255, 0.212>;
+    vector MAROON = <0.522, 0.078, 0.294>;
+    vector FUCHSIA = <0.941, 0.071, 0.745>;
+    vector PURPLE = <0.694, 0.051, 0.788>;
+    vector WHITE = <1.000, 1.000, 1.000>;
+    vector SILVER = <0.867, 0.867, 0.867>;
+    vector GRAY = <0.667, 0.667, 0.667>;
+    vector BLACK = <0.000, 0.000, 0.000>;
+    
+    llSetLinkPrimitiveParamsFast(Prim,[PRIM_TEXT, msg, GREEN, 1.0]);
+}
+
+//The main functoin of this script is to set path cut for the pie chart. The CutValue here will be the percentage send in by the 
+//main state. 
+SetPathCut(integer Prim, integer CutValue)
+{
+    llSetLinkPrimitiveParamsFast(Prim,
+            [PRIM_TYPE, PRIM_TYPE_CYLINDER,PRIM_HOLE_DEFAULT,
+            <0.0, CutValue /100, 0.0>,       //The cut value will have to be between 0-1, so we divide the percentage by 100.
+            0.0,             //hollow
+            <0.0, 0.0, 0.0>,            //twist
+            <1.0, 1.0, 0.0>,           //top size
+            <0.0, 0.0, 0.0>]);           //top sheer]
+}
+
+default
+{
+    //This link message will intercept message comming from another prim within the same prototype 
+    //for the information that this script will need to display on the prim. 
+    link_message(integer sender, integer number, string message, key id )
+    {
+        if (sender == Sender)       //Prim send validation 
+        {
+            //Send the number for % of region up.
+             //string pattern format: GridName|ServerName|Regions#|users#|Prims#|Scripts#
+             list Stats = llParseString2List(message, "|","");
+             SetText(GridName,llList2String(Stats, 0));
+             SetText(ServerName,llList2String(Stats, 1));
+             SetText(RegionsCount,llList2String(Stats, 2));
+             SetText(UsersCount,llList2String(Stats, 3));
+             SetText(PrimsCount,llList2String(Stats, 4));
+             SetText(ScriptsCount,llList2String(Stats, 5));
+             SetText(RegionUpCount,(string)number);                //type cast # of region up in string
+             
+             //Call SetPathCut() function once the value have been fetch. 
+        }
+    }
+}
